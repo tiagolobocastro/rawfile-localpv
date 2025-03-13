@@ -52,3 +52,4 @@ jobs:
       env:
         CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         CR_RELEASE_NAME_TEMPLATE: 'chart-{{ .Version }}'
+        charts_dir: ./deploy/charts
