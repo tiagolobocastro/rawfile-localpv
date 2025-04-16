@@ -12,6 +12,7 @@ pkgs.mkShell {
     helm-docs
     nixos-shell
     unstable-pkgs.kind
+    git
     python313
     poetry # Python3.13 is not supported (Overriding python3 input will not work)
     gcc
