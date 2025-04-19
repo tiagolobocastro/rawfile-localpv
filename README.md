@@ -48,9 +48,23 @@ To use a Filesystem based 'extent file' as the emulated block device (i.e. a sof
 
 ## Installation
 
-`helm install -n openebs rawfile-csi ./deploy/helm/rawfile-csi/`
+### Via Helm
+
+```shell
+helm repo add rawfile-localpv https://openebs.github.io/rawfile-localpv
+helm repo update rawfile-localpv
+helm install -n openebs rawfile-csi rawfile-localpv/rawfile-csi
+```
 
 > Refer to chart's [README](./deploy/helm/rawfile-csi/README.md) to see the [values](./deploy/helm/rawfile-csi/values.yaml) documentation if you need to customize it
+
+### Via manifests
+
+```shell
+kubectl apply -f https://github.com/openebs/rawfile-localpv/raw/refs/heads/master/deploy/rawfile-csi-driver.yaml
+```
+
+> Manifests are generated from helm chart's default values using `helm template` command
 
 Usage
 ---
