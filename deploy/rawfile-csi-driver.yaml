@@ -25,7 +25,7 @@ metadata:
     api-approved.kubernetes.io: https://github.com/kubernetes-csi/external-snapshotter/pull/814
     controller-gen.kubebuilder.io/version: v0.11.3
     helm.sh/resource-policy: keep
-    
+
   creationTimestamp: null
   name: volumesnapshotclasses.snapshot.storage.k8s.io
 spec:
@@ -181,7 +181,7 @@ metadata:
     api-approved.kubernetes.io: https://github.com/kubernetes-csi/external-snapshotter/pull/814
     controller-gen.kubebuilder.io/version: v0.11.3
     helm.sh/resource-policy: keep
-    
+
   creationTimestamp: null
   name: volumesnapshotcontents.snapshot.storage.k8s.io
 spec:
@@ -681,7 +681,7 @@ metadata:
     api-approved.kubernetes.io: https://github.com/kubernetes-csi/external-snapshotter/pull/814
     controller-gen.kubebuilder.io/version: v0.11.3
     helm.sh/resource-policy: keep
-    
+
   creationTimestamp: null
   name: volumesnapshots.snapshot.storage.k8s.io
 spec:
