@@ -61,7 +61,7 @@ helm install -n openebs rawfile-csi rawfile-localpv/rawfile-csi
 ### Via manifests
 
 ```shell
-kubectl apply -f https://github.com/openebs/rawfile-localpv/raw/refs/heads/master/deploy/rawfile-csi-driver.yaml
+kubectl apply -f https://github.com/openebs/rawfile-localpv/raw/refs/heads/develop/deploy/rawfile-csi-driver.yaml
 ```
 
 > Manifests are generated from helm chart's default values using `helm template` command
