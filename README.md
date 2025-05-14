@@ -71,7 +71,7 @@ Features
   - ~~ReadWriteMany~~
 - [ ] Volume modes
   - [x] `Filesystem` mode
-  - [ ] `Block` mode
+  - [x] `Block` mode
 - [x] Volume metrics
 - [x] Supports fsTypes: `ext4`, `btrfs`, `xfs`
 - [x] Online expansion: If fs supports it (e.g. ext4, btrfs, xfs)
