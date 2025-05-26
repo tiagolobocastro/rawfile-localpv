@@ -42,11 +42,11 @@ def be_mounted(dev, mountpoint, readonly=False):
         be_unmounted(mountpoint)
     elif mountpoint.resolve().is_file():
         opts = ["bind"]
-        # don't we need to add this?
+        # todo: this is not sufficient, we need to create a separate loop device for RO
         if readonly:
             opts.append("ro")
         opts_str = ",".join(opts)
-        run(f"mount -t none -o {opts_str} -r {dev} {mountpoint}")
+        run(f"mount -t none -o {opts_str} {dev} {mountpoint}")
         return
 
     fs = current_fs(dev)

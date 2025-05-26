@@ -115,6 +115,8 @@ def attach_loop(file) -> str:
             pfx_len = len("/dev/loop")
             loop_dev_id = loop_file[pfx_len:]
             run(f"mknod {loop_file} b 7 {loop_dev_id}")
+        # sometimes a RO attribute is sticky on the loop device, for some reason
+        run_out(f"blockdev --setrw {loop_file}")
         return loop_file
 
     while True:
