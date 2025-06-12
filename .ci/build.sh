@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$(dirname "$0")"
+DREG=${DREG:-"docker.io"}
+CI_REGISTRY="$DREG"
 
 set -exuo pipefail
 source "$SCRIPT_DIR/common"
@@ -17,16 +19,20 @@ if [ "${CI_IMAGE_PLATFORMS}" = "local" ]; then
 else
   export IMAGE_DESTINATION="registry"
   if [ -n "${DNAME:-}" ] && [ -n "${DPASS:-}" ]; then
-    docker login -u "${DNAME}" -p "${DPASS}"
+    docker login -u "${DNAME}" -p "${DPASS}" "$CI_REGISTRY"
     export PUSH_OPTION="--push"
   fi
-  export IMAGE_TAGS="${COMMIT} ${BRANCH_SLUG}";
+  export IMAGE_TAGS="${COMMIT} ${BRANCH_SLUG} ${IMAGE_TAG}";
   export NO_CACHE_OPTIONS="--pull --no-cache"
 fi
 
 for t in ${IMAGE_TAGS}; do
   TAGS_ARGS+=" -t $(build-image-uri ${t})"
 done
+
+if [ -n "${IMAGE_TAG:-}" ] && [ "$IMAGE_DESTINATION" = "registry" ]; then
+  COMMIT=$IMAGE_TAG
+fi
 
 docker buildx build \
   ${TAGS_ARGS} \

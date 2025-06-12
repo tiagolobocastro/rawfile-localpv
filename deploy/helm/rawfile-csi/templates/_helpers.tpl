@@ -88,7 +88,7 @@ Some helpers to handle image global information
 {{- end }}
 
 {{- define "rawfile-csi.node-image-tag" -}}
-{{- $imageTag := .Values.node.image.tag | default .Values.image.tag | default .Chart.AppVersion }}
+{{- $imageTag := .Values.node.image.tag | default .Values.image.tag | default (printf "v%s" .Chart.AppVersion) }}
 {{- printf "%s" $imageTag }}
 {{- end }}
 

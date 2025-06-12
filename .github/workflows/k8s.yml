@@ -1,10 +1,88 @@
 name: K8s CI
 on:
   workflow_call:
+    inputs:
+      release:
+        required: false
+        type: boolean
+      release-check:
+        required: false
+        type: boolean
+      registry:
+        required: false
+        type: string
+        default: docker.io
+      namespace:
+        required: false
+        type: string
+        default: openebs
+      release-tag:
+        required: false
+        type: string
+      chart:
+        required: false
+        type: string
+        default: 'https://openebs.github.io/rawfile-localpv/'
 
 jobs:
+  release-check:
+    if: ${{ inputs.release-check }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: DeterminateSystems/nix-installer-action@v17
+        with:
+          kvm: true
+      - name: Setup Nix Path
+        run: |
+          export NIX_PATH=nixpkgs=$(jq '.nixpkgs.url' nix/sources.json -r)
+          echo "NIX_PATH=$NIX_PATH" >> $GITHUB_ENV
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+      - name: Pre-populate nix-shell
+        run: nix-shell --run "echo"
+      - name: BootStrap k8s cluster
+        run: |
+          sudo debconf-communicate <<< "set man-db/auto-update false" || true
+          sudo dpkg-reconfigure man-db || true
+          sudo chown $USER /mnt
+          nix-shell --run "TMP_KIND=/mnt/kind/rawfile/ .ci/deployer.sh start"
+      - name: Install HelmChart
+        env:
+          CI_REGISTRY: "${{ inputs.registry }}"
+          CI_RELEASE_TAG: "${{ inputs.release-tag }}"
+          CI_CHART: "${{ inputs.chart }}"
+          CI_IMAGE_NS: "${{ inputs.namespace }}"
+        run: nix-shell --run ".ci/e2e-test/setup.sh"
+#      todo: We've already tested before, just want sanity check that the release is correctly packaged
+#      - name: Run K8s sanity
+#        run: nix-shell --run ".ci/e2e-test/test.sh"
+      - run: |
+          nix-shell --run "kubectl -n openebs logs -lcomponent=node -c csi-driver --tail=-1"
+          nix-shell --run "kubectl -n openebs logs -lcomponent=controller -c csi-driver --tail=-1"
+      - name: Collect dump
+        if: failure()
+        run: |
+          nix-shell --run "kind export logs ./dump/kind --name rawfile"
+          nix-shell --run "kubectl cluster-info dump --output-directory=./dump/k8s --namespaces=openebs,kube-system"
+      - name: Upload cluster dump
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-dump
+          path: dump
+      # - name: Setup tmate session
+      #   if: ${{ failure() }}
+      #   timeout-minutes: 120
+      #   uses: mxschmitt/action-tmate@v3
   e2e:
-    runs-on: ubuntu-latest-8-cores
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.release-check }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,6 +102,7 @@ jobs:
       - name: Pre-populate nix-shell
         run: nix-shell --run "echo"
       - name: Build test images
+        if: ${{ !inputs.release }}
         run: nix-shell --run "CI_TEST=true .ci/build.sh"
       - name: BootStrap k8s cluster
         run: |
@@ -31,7 +110,23 @@ jobs:
           sudo dpkg-reconfigure man-db || true
           sudo chown $USER /mnt
           nix-shell --run "TMP_KIND=/mnt/kind/rawfile/ .ci/deployer.sh start"
+      - name: Release Sanity Check
+        if: ${{ inputs.release }}
+        run: |
+          version=$(yq eval '.version' deploy/helm/rawfile-csi/Chart.yaml)
+          tag=$(git describe --tags --exact-match HEAD)
+          echo "version: $tag"
+          echo "release-tag: ${{ inputs.release-tag }}"
+          echo "git-tag: $tag"
+          if [ "v$version" != "$tag" ] || [ "$tag" != "${{ inputs.release-tag }}" ]; then
+            echo "Sanity check for tag matching failed"
+            exit 1
+          fi
       - name: Install HelmChart
+        env:
+          CI_REGISTRY: "${{ inputs.registry }}"
+          CI_RELEASE_TAG: "${{ inputs.release-tag }}"
+          CI_IMAGE_NS: "${{ inputs.namespace }}"
         run: nix-shell --run ".ci/e2e-test/setup.sh"
       - name: Run K8s tests
         run: nix-shell --run ".ci/e2e-test/test.sh"
