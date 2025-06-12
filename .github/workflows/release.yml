@@ -1,0 +1,98 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+**'
+
+jobs:
+  needs-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.needs.outputs.version }}
+      registry: ${{ steps.needs.outputs.registry }}
+      namespace: ${{ steps.needs.outputs.namespace }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: needs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          chartVersion=$(yq eval '.version' deploy/helm/rawfile-csi/Chart.yaml)
+          chartAppVersion=$(yq eval '.appVersion' deploy/helm/rawfile-csi/Chart.yaml)
+          if [ "$chartVersion" != "$chartAppVersion" ]; then
+            echo "version and app versions don't match"
+            exit 1
+          fi
+          if [ "${{ github.event_name }}" = "tag" ]; then
+            tag="${{ github.ref_name }}"
+          else
+            tag="$chartVersion"
+          fi
+          if [ "$(.ci/gh-release-exists.sh $chartVersion)" = "not-found" ]; then
+            echo "version=$chartVersion" >> $GITHUB_OUTPUT
+            echo "registry=docker.io" >> $GITHUB_OUTPUT
+            echo "namespace=${{ github.repository_owner }}" >> $GITHUB_OUTPUT
+          else
+            .ci/gh-release-exists.sh $chartVersion
+          fi
+
+  images:
+    uses: ./.github/workflows/images.yml
+    needs: needs-release
+    if: ${{ needs.needs-release.outputs.version != '' }}
+    secrets: inherit
+    with:
+      registry: ${{ needs.needs-release.outputs.registry }}
+      namespace: ${{ needs.needs-release.outputs.namespace }}
+
+  k8s:
+    uses: ./.github/workflows/k8s.yml
+    needs:
+      - needs-release
+      - images
+    secrets: inherit
+    with:
+      release: true
+      release-tag: v${{ needs.needs-release.outputs.version }}
+      registry: ${{ needs.needs-release.outputs.registry }}
+      namespace: ${{ needs.needs-release.outputs.namespace }}
+
+  chart-release:
+    uses: ./.github/workflows/helm-chart.yml
+    needs: k8s
+
+  no-release:
+    if: ${{ needs.needs-release.outputs.version == '' }}
+    needs: needs-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Released Already
+        run: |
+          echo "Release is already present"
+          exit 1
+
+  release:
+    if: ${{ success() }}
+    needs:
+      - needs-release
+      - images
+      - k8s
+      - chart-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Released
+        run: exit 0
+
+  released-check:
+    uses: ./.github/workflows/k8s.yml
+    with:
+      release-check: true
+      release-tag: v${{ needs.needs-release.outputs.version }}
+      registry: ${{ needs.needs-release.outputs.registry }}
+      namespace: ${{ needs.needs-release.outputs.namespace }}
+      chart: 'https://${{ github.repository_owner }}.github.io/rawfile-localpv/'
+    needs:
+      - release
+      - needs-release

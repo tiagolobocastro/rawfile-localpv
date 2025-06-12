@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 
-set -ex
-
 slugify() {
   echo "$1" | sed -r 's/[^.a-zA-Z0-9]+/-/g'
 }
 
-export IMAGE="openebs/rawfile-localpv"
+export CI_IMAGE_NS=${CI_IMAGE_NS:-"openebs"}
+export IMAGE="$CI_IMAGE_NS/rawfile-localpv"
 export COMMIT=$(git rev-parse --short HEAD)
 export BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
+export IMAGE_TAG=$(git describe --tags --exact-match HEAD || :)
 export BRANCH_SLUG=$(slugify $BRANCH)
 
-export CI_REGISTRY="docker.io"
+export CI_REGISTRY=${CI_REGISTRY:-"docker.io"}
 export CI_IMAGE_REPO="${IMAGE}"
 export CI_IMAGE_NAME="${CI_REGISTRY}/${CI_IMAGE_REPO}"
 ## See `docker system info --format '{{.ClientInfo.Os}}/{{.ClientInfo.Arch}}'` for default platform
