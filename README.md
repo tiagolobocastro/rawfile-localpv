@@ -10,16 +10,16 @@
 
 ## Overview
 
-The RawFile-LocalPV OpenEBS Data-Engine is a similar but more flexible, yet more complex derivation of the LocalPV-Hostpath Data-Engine. <BR>
+The RawFile-LocalPV OpenEBS Data-Engine is a similar but more flexible, yet more complex derivation of the LocalPV-HostPath Data-Engine. <BR>
 
-This are a few reasons to consider using node-based (rather than network-based) storage architecture:
+There are a few reasons to consider using node-based (rather than network-based) storage architecture:
 > - Performance: Almost no network-based storage solution can keep up with baremetal disk performance in terms of IOPS/latency/throughput combined. And you’d like to get the best out of the SSD you’ve got!
 > - On-premise Environment: You might not be able to afford the cost of upgrading all your networking infrastructure, to get the best out of your network-based storage solution.
 > - Complexity: Network-based solutions are distributed systems. And distributed systems are not easy! You might want to have a system that is easier to understand and to reason about. Also, with less complexity, you can fix unpredicted issues more easily.
 
 ### Using node-based storage
 
-The OpenEBS LocalPV-HostPath Data-Engine makes it pretty easy to automatically provision hostPath PVs and use them in your workloads. But, there are known limitations though:
+The OpenEBS LocalPV-HostPath Data-Engine makes it pretty easy to automatically provision HostPath PVs and use them in your workloads. But, there are known limitations though:
 
 > [!IMPORTANT]
 > - You can’t monitor volume usage: There are hacky workarounds to run “du” regularly, but that could prove to be a performance killer, since it could put a lot of burden on your CPU and cause your filesystem cache to fill up. Not really good for a production workload.
@@ -30,11 +30,11 @@ The OpenEBS LocalPV-HostPath Data-Engine makes it pretty easy to automatically p
 <BR>
 
 #### All the above issues stem from the same root cause:
-   - hostPath/LocalPVs are simple bind-mounts from the host filesystem into the pod.
+   - HostPath/LocalPVs are simple bind-mounts from the host filesystem into the pod.
 
 ### The idea behind RawFile-LocalPV
 
-To use a Filesystem based 'extent file' as the emulated block device (i.e. a soft-LUN block device), and leverage the LINUX loop device to associate that soft-LUN file as a complete flexibe block device (i.e. an emulated soft disk device). At this point you can create a PV with a fileystem on it. This allows you to...
+To use a Filesystem based 'extent file' as the emulated block device (i.e. a soft-LUN block device), and leverage the LINUX loop device to associate that soft-LUN file as a complete flexible block device (i.e. an emulated soft disk device). At this point you can create a PV with a fileystem on it. This allows you to...
 
 > [!NOTE]
 > - You can monitor volume usage by running `df -hT` in `O(1)` since each soft-LUN block device is mounted separately on the local node (displaying utilization status/metrics or each mountpoint).
