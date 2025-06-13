@@ -15,6 +15,9 @@ on:
         type: string
         default: openebs
 
+env:
+  CI: 1
+
 jobs:
   image-publish:
     runs-on: ubuntu-latest

@@ -29,7 +29,7 @@ pkgs.mkShell {
     poetry env use $(which python)
     poetry install
     source $(poetry env info -p)/bin/activate
-    if [ "${CI:-}" = "1" ]; then
+    if ! [ "$CI" == "1" ]; then
       pre-commit install
     fi
   '';
