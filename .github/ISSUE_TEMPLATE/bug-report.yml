@@ -51,9 +51,9 @@ body:
         <logs>
 
         ```console
-        $ kubectl -n openebs logs rawfile-csi-controller-0 -A
+        $ kubectl -n openebs logs rawfile-localpv-controller-0 -A
         # paste output here
-        $ kubectl -n openebs logs rawfile-csi-node-[xxxx] -A
+        $ kubectl -n openebs logs rawfile-localpv-node-[xxxx] -A
         # paste output here
         $ kubectl -n openebs get pods
         # paste output here

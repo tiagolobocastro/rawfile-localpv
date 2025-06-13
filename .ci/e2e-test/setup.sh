@@ -24,14 +24,14 @@ if [ "$(kubectl config current-context)" = "kind-rawfile" ]; then
   kind load docker-image "$URI" --name "rawfile"
 fi
 
-CHART="$SCRIPT_DIR/../../deploy/helm/rawfile-csi/"
+CHART="$SCRIPT_DIR/../../deploy/helm/rawfile-localpv/"
 if [ -n "${CI_CHART:-}" ]; then
-  helm repo add rawfile-csi "$CI_CHART"
-  CHART="rawfile-csi/rawfile-csi --version ${TAG#v}"
+  helm repo add rawfile-localpv "$CI_CHART"
+  CHART="rawfile-localpv/rawfile-localpv --version ${TAG#v}"
 fi
 
 helm upgrade --wait \
-  -n openebs --create-namespace -i rawfile-csi \
+  -n openebs --create-namespace -i rawfile-localpv \
   --set metrics.serviceMonitor.enabled=false \
   --set image.registry=$CI_REGISTRY,image.repository=$CI_IMAGE_REPO,image.tag=$TAG,image.pullPolicy=Never \
   $CHART

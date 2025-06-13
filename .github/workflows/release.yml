@@ -19,8 +19,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          chartVersion=$(yq eval '.version' deploy/helm/rawfile-csi/Chart.yaml)
-          chartAppVersion=$(yq eval '.appVersion' deploy/helm/rawfile-csi/Chart.yaml)
+          chartVersion=$(yq eval '.version' deploy/helm/rawfile-localpv/Chart.yaml)
+          chartAppVersion=$(yq eval '.appVersion' deploy/helm/rawfile-localpv/Chart.yaml)
           if [ "$chartVersion" != "$chartAppVersion" ]; then
             echo "version and app versions don't match"
             exit 1

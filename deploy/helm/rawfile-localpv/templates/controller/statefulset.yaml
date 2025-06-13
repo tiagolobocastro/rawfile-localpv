@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "rawfile-csi.fullname" . }}-controller
+  name: {{ include "rawfile-localpv.fullname" . }}-controller
 spec:
   replicas: 1
-  serviceName: {{ include "rawfile-csi.fullname" . }}
+  serviceName: {{ include "rawfile-localpv.fullname" . }}
   selector:
     matchLabels: &selectorLabels
-      {{- include "rawfile-csi.selectorLabels" . | nindent 6 }}
+      {{- include "rawfile-localpv.selectorLabels" . | nindent 6 }}
       component: controller
   template:
     metadata:
       labels: *selectorLabels
     spec:
-      serviceAccount: {{ include "rawfile-csi.fullname" . }}-driver
+      serviceAccount: {{ include "rawfile-localpv.fullname" . }}-driver
       priorityClassName: {{ .Values.controller.priorityClassName }}
       tolerations:
         {{- .Values.controller.tolerations | toYaml | nindent 8 }}
@@ -22,8 +22,8 @@ spec:
           emptyDir: {}
       containers:
         - name: csi-driver
-          image: "{{ include "rawfile-csi.controller-image" . }}"
-          imagePullPolicy: "{{ include "rawfile-csi.controller-pull-policy" . }}"
+          image: "{{ include "rawfile-localpv.controller-image" . }}"
+          imagePullPolicy: "{{ include "rawfile-localpv.controller-pull-policy" . }}"
           args:
             - csi-driver
             - --disable-metrics
@@ -35,11 +35,11 @@ spec:
             - name: NODE_DATADIR
               value: "{{ .Values.node.dataDirPath }}"
             - name: IMAGE_REGISTRY
-              value: "{{ include "rawfile-csi.node-image-registry" . }}"
+              value: "{{ include "rawfile-localpv.node-image-registry" . }}"
             - name: IMAGE_REPOSITORY
-              value: "{{ include "rawfile-csi.controller-image-repository" . }}"
+              value: "{{ include "rawfile-localpv.controller-image-repository" . }}"
             - name: IMAGE_TAG
-              value: "{{ include "rawfile-csi.controller-image-tag" . }}"
+              value: "{{ include "rawfile-localpv.controller-image-tag" . }}"
             - name: NAMESPACE
               value: {{ .Release.Namespace }}
           volumeMounts:
@@ -49,7 +49,7 @@ spec:
             - name: csi-probe
               containerPort: 9808
           resources:
-            {{- include "rawfile-csi.controller-resources" . | nindent 12 }}
+            {{- include "rawfile-localpv.controller-resources" . | nindent 12 }}
         - name: external-resizer
           image: {{ printf "%s/%s:%s" (.Values.controller.externalResizer.image.registry | default .Values.global.k8sImageRegistry) .Values.controller.externalResizer.image.repository .Values.controller.externalResizer.image.tag }}
           imagePullPolicy: IfNotPresent

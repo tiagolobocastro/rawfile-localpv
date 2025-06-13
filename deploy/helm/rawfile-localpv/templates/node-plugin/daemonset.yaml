@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ include "rawfile-csi.fullname" . }}-node
+  name: {{ include "rawfile-localpv.fullname" . }}-node
 spec:
   updateStrategy:
     rollingUpdate:
       maxUnavailable: "100%"
   selector:
     matchLabels: &selectorLabels
-      {{- include "rawfile-csi.selectorLabels" . | nindent 6 }}
+      {{- include "rawfile-localpv.selectorLabels" . | nindent 6 }}
       component: node
   template:
     metadata:
       labels: *selectorLabels
     spec:
-      serviceAccount: {{ include "rawfile-csi.fullname" . }}-driver
+      serviceAccount: {{ include "rawfile-localpv.fullname" . }}-driver
       priorityClassName: {{ .Values.node.priorityClassName }}
       tolerations:
         {{- .Values.node.tolerations | toYaml | nindent 8 }}
@@ -25,7 +25,7 @@ spec:
             type: Directory
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/rawfile-csi
+            path: /var/lib/kubelet/plugins/rawfile-localpv
             type: DirectoryOrCreate
         - name: mountpoint-dir
           hostPath:
@@ -41,8 +41,8 @@ spec:
             type: Directory
       containers:
         - name: csi-driver
-          image: "{{ include "rawfile-csi.node-image" . }}"
-          imagePullPolicy: "{{ include "rawfile-csi.node-pull-policy" . }}"
+          image: "{{ include "rawfile-localpv.node-image" . }}"
+          imagePullPolicy: "{{ include "rawfile-localpv.node-pull-policy" . }}"
           securityContext:
             privileged: true
           env:
@@ -53,11 +53,11 @@ spec:
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
             - name: IMAGE_REGISTRY
-              value: "{{ include "rawfile-csi.node-image-registry" . }}"
+              value: "{{ include "rawfile-localpv.node-image-registry" . }}"
             - name: IMAGE_REPOSITORY
-              value: "{{ include "rawfile-csi.node-image-repository" . }}"
+              value: "{{ include "rawfile-localpv.node-image-repository" . }}"
             - name: IMAGE_TAG
-              value: "{{ include "rawfile-csi.node-image-tag" . }}"
+              value: "{{ include "rawfile-localpv.node-image-tag" . }}"
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -85,7 +85,7 @@ spec:
             - name: device
               mountPath: /dev
           resources:
-            {{- include "rawfile-csi.controller-resources" . | nindent 12 }}
+            {{- include "rawfile-localpv.controller-resources" . | nindent 12 }}
         - name: node-driver-registrar
           image: {{ printf "%s/%s:%s" (.Values.node.driverRegistrar.image.registry | default .Values.global.k8sImageRegistry) .Values.node.driverRegistrar.image.repository .Values.node.driverRegistrar.image.tag }}
           imagePullPolicy: IfNotPresent
@@ -97,7 +97,7 @@ spec:
             - name: ADDRESS
               value: /csi/csi.sock
             - name: DRIVER_REG_SOCK_PATH
-              value: /var/lib/kubelet/plugins/rawfile-csi/csi.sock
+              value: /var/lib/kubelet/plugins/rawfile-localpv/csi.sock
           ports:
             - containerPort: 9809
               name: healthz

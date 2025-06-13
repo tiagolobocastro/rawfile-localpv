@@ -1,13 +1,13 @@
 ---
-# Source: rawfile-csi/templates/rbac.yaml
+# Source: rawfile-localpv/templates/rbac.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: release-name-rawfile-csi-driver
+  name: release-name-rawfile-localpv-driver
 imagePullSecrets:
   []
 ---
-# Source: rawfile-csi/templates/storageclass.yaml
+# Source: rawfile-localpv/templates/storageclass.yaml
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -17,7 +17,7 @@ reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 ---
-# Source: rawfile-csi/helm/crds/templates/csi-volume-snapshot-class.yaml
+# Source: rawfile-localpv/helm/crds/templates/csi-volume-snapshot-class.yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -173,7 +173,7 @@ status:
   conditions: []
   storedVersions: []
 ---
-# Source: rawfile-csi/helm/crds/templates/csi-volume-snapshot-content.yaml
+# Source: rawfile-localpv/helm/crds/templates/csi-volume-snapshot-content.yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -673,7 +673,7 @@ status:
   conditions: []
   storedVersions: []
 ---
-# Source: rawfile-csi/helm/crds/templates/csi-volume-snapshot.yaml
+# Source: rawfile-localpv/helm/crds/templates/csi-volume-snapshot.yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -1074,11 +1074,11 @@ status:
   conditions: []
   storedVersions: []
 ---
-# Source: rawfile-csi/templates/rbac.yaml
+# Source: rawfile-localpv/templates/rbac.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: release-name-rawfile-csi-provisioner
+  name: release-name-rawfile-localpv-provisioner
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -1120,11 +1120,11 @@ rules:
     resources: ["daemonsets"]
     verbs: ["get"]
 ---
-# Source: rawfile-csi/templates/rbac.yaml
+# Source: rawfile-localpv/templates/rbac.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: release-name-rawfile-csi-broker
+  name: release-name-rawfile-localpv-broker
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
@@ -1133,11 +1133,11 @@ rules:
     resources: ["pods"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
-# Source: rawfile-csi/templates/rbac.yaml
+# Source: rawfile-localpv/templates/rbac.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: release-name-rawfile-csi-resizer
+  name: release-name-rawfile-localpv-resizer
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -1158,11 +1158,11 @@ rules:
     resources: ["events"]
     verbs: ["list", "watch", "create", "update", "patch"]
 ---
-# Source: rawfile-csi/templates/rbac.yaml
+# Source: rawfile-localpv/templates/rbac.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: release-name-rawfile-csi-snapshotter
+  name: release-name-rawfile-localpv-snapshotter
 rules:
   - apiGroups: [""]
     resources: ["events"]
@@ -1177,70 +1177,70 @@ rules:
     resources: ["volumesnapshotcontents/status"]
     verbs: ["update", "patch"]
 ---
-# Source: rawfile-csi/templates/rbac.yaml
+# Source: rawfile-localpv/templates/rbac.yaml
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: release-name-rawfile-csi-provisioner
+  name: release-name-rawfile-localpv-provisioner
 subjects:
   - kind: ServiceAccount
-    name: release-name-rawfile-csi-driver
+    name: release-name-rawfile-localpv-driver
     namespace: prod-main-sms-panel
 roleRef:
   kind: ClusterRole
-  name: release-name-rawfile-csi-provisioner
+  name: release-name-rawfile-localpv-provisioner
   apiGroup: rbac.authorization.k8s.io
 ---
-# Source: rawfile-csi/templates/rbac.yaml
+# Source: rawfile-localpv/templates/rbac.yaml
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: release-name-rawfile-csi-broker
+  name: release-name-rawfile-localpv-broker
 subjects:
   - kind: ServiceAccount
-    name: release-name-rawfile-csi-driver
+    name: release-name-rawfile-localpv-driver
     namespace: prod-main-sms-panel
 roleRef:
   kind: ClusterRole
-  name: release-name-rawfile-csi-broker
+  name: release-name-rawfile-localpv-broker
   apiGroup: rbac.authorization.k8s.io
 ---
-# Source: rawfile-csi/templates/rbac.yaml
+# Source: rawfile-localpv/templates/rbac.yaml
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: release-name-rawfile-csi-resizer
+  name: release-name-rawfile-localpv-resizer
 subjects:
   - kind: ServiceAccount
-    name: release-name-rawfile-csi-driver
+    name: release-name-rawfile-localpv-driver
     namespace: prod-main-sms-panel
 roleRef:
   kind: ClusterRole
-  name: release-name-rawfile-csi-resizer
+  name: release-name-rawfile-localpv-resizer
   apiGroup: rbac.authorization.k8s.io
 ---
-# Source: rawfile-csi/templates/rbac.yaml
+# Source: rawfile-localpv/templates/rbac.yaml
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: release-name-rawfile-csi-snapshotter
+  name: release-name-rawfile-localpv-snapshotter
 subjects:
   - kind: ServiceAccount
-    name: release-name-rawfile-csi-driver
+    name: release-name-rawfile-localpv-driver
     namespace: prod-main-sms-panel
 roleRef:
   kind: ClusterRole
-  name: release-name-rawfile-csi-snapshotter
+  name: release-name-rawfile-localpv-snapshotter
   apiGroup: rbac.authorization.k8s.io
 ---
-# Source: rawfile-csi/templates/controller/service.yaml
+# Source: rawfile-localpv/templates/controller/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: release-name-rawfile-csi-controller
+  name: release-name-rawfile-localpv-controller
   labels:
-    helm.sh/chart: rawfile-csi-0.9.0
-    app.kubernetes.io/name: rawfile-csi
+    helm.sh/chart: rawfile-localpv-0.9.0
+    app.kubernetes.io/name: rawfile-localpv
     app.kubernetes.io/instance: release-name
     app.kubernetes.io/version: "0.8.0"
     app.kubernetes.io/managed-by: Helm
@@ -1248,19 +1248,19 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: rawfile-csi
+    app.kubernetes.io/name: rawfile-localpv
     app.kubernetes.io/instance: release-name
     component: controller
   clusterIP: None
 ---
-# Source: rawfile-csi/templates/node-plugin/service.yaml
+# Source: rawfile-localpv/templates/node-plugin/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: release-name-rawfile-csi-node
+  name: release-name-rawfile-localpv-node
   labels:
-    helm.sh/chart: rawfile-csi-0.9.0
-    app.kubernetes.io/name: rawfile-csi
+    helm.sh/chart: rawfile-localpv-0.9.0
+    app.kubernetes.io/name: rawfile-localpv
     app.kubernetes.io/instance: release-name
     app.kubernetes.io/version: "0.8.0"
     app.kubernetes.io/managed-by: Helm
@@ -1273,29 +1273,29 @@ spec:
       targetPort: metrics
       protocol: TCP
   selector:
-    app.kubernetes.io/name: rawfile-csi
+    app.kubernetes.io/name: rawfile-localpv
     app.kubernetes.io/instance: release-name
     component: node
 ---
-# Source: rawfile-csi/templates/node-plugin/daemonset.yaml
+# Source: rawfile-localpv/templates/node-plugin/daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: release-name-rawfile-csi-node
+  name: release-name-rawfile-localpv-node
 spec:
   updateStrategy:
     rollingUpdate:
       maxUnavailable: "100%"
   selector:
     matchLabels: &selectorLabels
-      app.kubernetes.io/name: rawfile-csi
+      app.kubernetes.io/name: rawfile-localpv
       app.kubernetes.io/instance: release-name
       component: node
   template:
     metadata:
       labels: *selectorLabels
     spec:
-      serviceAccount: release-name-rawfile-csi-driver
+      serviceAccount: release-name-rawfile-localpv-driver
       priorityClassName: system-node-critical
       tolerations:
         null
@@ -1306,7 +1306,7 @@ spec:
             type: Directory
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/rawfile-csi
+            path: /var/lib/kubelet/plugins/rawfile-localpv
             type: DirectoryOrCreate
         - name: mountpoint-dir
           hostPath:
@@ -1366,7 +1366,7 @@ spec:
             - name: ADDRESS
               value: /csi/csi.sock
             - name: DRIVER_REG_SOCK_PATH
-              value: /var/lib/kubelet/plugins/rawfile-csi/csi.sock
+              value: /var/lib/kubelet/plugins/rawfile-localpv/csi.sock
           ports:
             - containerPort: 9809
               name: healthz
@@ -1437,24 +1437,24 @@ spec:
             - name: socket-dir
               mountPath: /csi
 ---
-# Source: rawfile-csi/templates/controller/statefulset.yaml
+# Source: rawfile-localpv/templates/controller/statefulset.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: release-name-rawfile-csi-controller
+  name: release-name-rawfile-localpv-controller
 spec:
   replicas: 1
-  serviceName: release-name-rawfile-csi
+  serviceName: release-name-rawfile-localpv
   selector:
     matchLabels: &selectorLabels
-      app.kubernetes.io/name: rawfile-csi
+      app.kubernetes.io/name: rawfile-localpv
       app.kubernetes.io/instance: release-name
       component: controller
   template:
     metadata:
       labels: *selectorLabels
     spec:
-      serviceAccount: release-name-rawfile-csi-driver
+      serviceAccount: release-name-rawfile-localpv-driver
       priorityClassName: system-cluster-critical
       tolerations:
         - effect: NoSchedule
@@ -1501,7 +1501,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
 ---
-# Source: rawfile-csi/templates/driver.yaml
+# Source: rawfile-localpv/templates/driver.yaml
 apiVersion: storage.k8s.io/v1
 kind: CSIDriver
 metadata:

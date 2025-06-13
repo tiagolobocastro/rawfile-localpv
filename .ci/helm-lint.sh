@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]:-"$0"}")")"
 ROOT_DIR="$SCRIPT_DIR/.."
-CHART_DIR="$ROOT_DIR/deploy/helm/rawfile-csi"
+CHART_DIR="$ROOT_DIR/deploy/helm/rawfile-localpv"
 
 command -v helm >/dev/null 2>&1 || { echo >&2 "Helm is not installed. Aborting."; exit 1; }
 helm template "$CHART_DIR" --debug

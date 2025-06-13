@@ -116,7 +116,7 @@ jobs:
       - name: Release Sanity Check
         if: ${{ inputs.release }}
         run: |
-          version=$(yq eval '.version' deploy/helm/rawfile-csi/Chart.yaml)
+          version=$(yq eval '.version' deploy/helm/rawfile-localpv/Chart.yaml)
           tag=$(git describe --tags --exact-match HEAD)
           echo "version: $tag"
           echo "release-tag: ${{ inputs.release-tag }}"
