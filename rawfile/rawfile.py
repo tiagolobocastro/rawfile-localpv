@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import logging
 from concurrent import futures
-
+import signal
+import time
 import bd2fs
 import click
 import grpc
@@ -50,6 +51,22 @@ def csi_driver(endpoint, nodeid, enable_metrics, metrics_port):
         server,
     )
     server.add_insecure_port(endpoint)
+
+    def signal_handler(signum, frame: None):
+        grace_seconds = 20
+
+        print(f"Received termination request via signal: {signal.Signals(signum).name}")
+        print(f"Stopping the CSI server with a grace period of {grace_seconds} seconds")
+
+        start = time.time()
+        server.stop(grace_seconds)
+        elapsed = time.time() - start
+
+        print(f"CSI Server has stopped after {elapsed:.1f} seconds")
+
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
     server.start()
     server.wait_for_termination()
 
