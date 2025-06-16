@@ -20,6 +20,12 @@ btrfsutil = "^6.14"
 [tool.poetry.scripts]
 rawfile = "rawfile.rawfile:cli"
 
+[tool.poetry.group.test.dependencies]
+pytest = "^8.4.0"
+pytest-bdd = "^8.1.0"
+retrying = "^1.3.4"
+kubernetes = "^33.1.0"
+
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.2.0"
 
