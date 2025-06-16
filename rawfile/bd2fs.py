@@ -18,7 +18,6 @@ from declarative import (
     be_unmounted,
 )
 from fs_util import AccessType, mountpoint_to_dev, path_stats
-from rawfile_util import attached_loops
 from google.protobuf.timestamp_pb2 import Timestamp
 from remote import btrfs_create_snapshot, btrfs_delete_snapshot
 from util import log_grpc_request
@@ -170,8 +169,8 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
     @log_grpc_request
     def NodeExpandVolume(self, request, context):
         if get_access_type(request) is AccessType.block:
-            dev = attached_loops(request.volume_path)[0]
-            request.volume_path = dev
+            device_path = f"{request.staging_target_path}/device"
+            request.volume_path = device_path
             self.bds.NodeExpandVolume(request, context)
             size = request.capacity_range.required_bytes
             return csi_pb2.NodeExpandVolumeResponse(capacity_bytes=size)
