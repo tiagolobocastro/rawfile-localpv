@@ -116,3 +116,6 @@ dmypy.json
 .ci/e2e-test/ssh_id
 
 /deploy/helm/rawfile-localpv/Chart.lock
+
+pytest.log
+report.xml

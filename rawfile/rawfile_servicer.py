@@ -240,5 +240,6 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
 
         return csi_pb2.ControllerExpandVolumeResponse(
             capacity_bytes=size,
+            # todo: unstaged block volumes don't require node expansion
             node_expansion_required=True,
         )
