@@ -3,6 +3,58 @@ on:
   workflow_call:
 
 jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: DeterminateSystems/nix-installer-action@v17
+        with:
+          kvm: true
+      - name: Setup Nix Path
+        run: |
+          export NIX_PATH=nixpkgs=$(jq '.nixpkgs.url' nix/sources.json -r)
+          echo "NIX_PATH=$NIX_PATH" >> $GITHUB_ENV
+      - name: Pre-populate nix-shell
+        run: nix-shell --run "echo"
+      - name: Build test images
+        run: nix-shell --run "CI_TEST=true .ci/build.sh"
+      - name: BootStrap k8s cluster
+        run: |
+          sudo debconf-communicate <<< "set man-db/auto-update false" || true
+          sudo dpkg-reconfigure man-db || true
+          sudo chown $USER /mnt
+          nix-shell --run "TMP_KIND=/mnt/kind/rawfile/ .ci/deployer.sh start"
+      - name: Run K8s tests
+        run: nix-shell --run ".ci/smoke.sh"
+      - run: |
+          nix-shell --run "kubectl -n openebs logs -lcomponent=node -c csi-driver --tail=-1"
+          nix-shell --run "kubectl -n openebs logs -lcomponent=controller -c csi-driver --tail=-1"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pytest.log
+          path: pytest.log
+      - uses: pmeier/pytest-results-action@main
+        if: always()
+        with:
+          path: ./rawfile/tests/report.xml
+          summary: true
+          display-options: a
+          fail-on-empty: true
+          title: Smoke Test Results
+      - name: Collect dump
+        if: failure()
+        run: |
+          nix-shell --run "kind export logs ./dump/kind --name rawfile"
+          nix-shell --run "kubectl cluster-info dump --output-directory=./dump/k8s --namespaces=openebs,kube-system"
+      - name: Upload cluster dump
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-dump
+          path: dump
   e2e:
     runs-on: ubuntu-latest-8-cores
     steps:
