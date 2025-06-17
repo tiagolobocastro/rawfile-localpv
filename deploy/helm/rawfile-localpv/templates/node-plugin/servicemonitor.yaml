@@ -3,9 +3,9 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "rawfile-csi.fullname" . }}-node
+  name: {{ include "rawfile-localpv.fullname" . }}-node
   labels:
-    {{- include "rawfile-csi.labels" . | nindent 4 }}
+    {{- include "rawfile-localpv.labels" . | nindent 4 }}
 spec:
   endpoints:
   - port: metrics
@@ -17,7 +17,7 @@ spec:
       - {{ .Release.Namespace }}
   selector:
     matchLabels:
-      {{- include "rawfile-csi.selectorLabels" . | nindent 6 }}
+      {{- include "rawfile-localpv.selectorLabels" . | nindent 6 }}
       component: node
 {{- end }}
 {{- end }}

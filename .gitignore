@@ -115,7 +115,7 @@ dmypy.json
 .ci/e2e-test/ginkgo
 .ci/e2e-test/ssh_id
 
-/deploy/charts/rawfile-csi/Chart.lock
+/deploy/helm/rawfile-localpv/Chart.lock
 
 pytest.log
 report.xml

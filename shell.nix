@@ -16,6 +16,7 @@ pkgs.mkShell {
     helm-docs
     nixos-shell
     kind
+    git
     python313
     poetry # Python3.13 is not supported (Overriding python3 input will not work)
     gcc
@@ -28,7 +29,9 @@ pkgs.mkShell {
     poetry env use $(which python)
     poetry install
     source $(poetry env info -p)/bin/activate
-    pre-commit install
+    if ! [ "$CI" == "1" ]; then
+      pre-commit install
+    fi
   '';
   postShellHook = ''
     deactivate
