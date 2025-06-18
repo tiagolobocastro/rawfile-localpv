@@ -60,7 +60,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pytest.log
+          name: smoke-pytest.log
           path: pytest.log
       - uses: pmeier/pytest-results-action@main
         if: always()
@@ -79,7 +79,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: k8s-dump
+          name: smoke-k8s-dump
           path: dump
 
   release-check:

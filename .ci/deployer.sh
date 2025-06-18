@@ -113,6 +113,11 @@ $SUDO rm -rf "$TMP_KIND"/*
 cat <<EOF > "$TMP_KIND_CONFIG"
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+kubeadmConfigPatches:
+- |
+  apiVersion: kubelet.config.k8s.io/v1beta1
+  kind: KubeletConfiguration
+  syncFrequency: 10s
 nodes:
 - role: control-plane
   image: kindest/node:$K8S_VERSION
