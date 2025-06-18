@@ -11,7 +11,7 @@ helm_bin = which("helm")
 class HelmReleaseClient:
     def __init__(self):
         self.namespace = "openebs"
-        self.release = "rawfile-csi"
+        self.release = "rawfile-localpv"
 
     def get_metadata(self):
         args = [

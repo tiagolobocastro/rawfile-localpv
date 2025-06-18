@@ -136,6 +136,12 @@ def mount_root_subvol(volume_id):
 def btrfs_delete_snapshot(volume_id, name):
     import btrfsutil
 
+    # todo: what happens when we've deleted the source volume?
+    # try:
+    #     rawfile_util.img_file(volume_id)
+    # except FileNotFoundError:
+    #     return
+
     with mount_root_subvol(volume_id) as root_subvol:
         snapshots_dir = f"{root_subvol}/.snapshots"
         snapshot_path = f"{snapshots_dir}/{name}"

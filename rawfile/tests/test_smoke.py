@@ -14,11 +14,17 @@ helm = HelmReleaseClient()
 deployer = Deployer()
 
 namespace = "rawfile-test"
+provisioner = "rawfile.csi.openebs.io"
 
 
 @scenario("smoke.feature", "Create PVCs with different storage parameters")
 def test_create_pvcs_with_different_storage_parameters():
     """Create PVCs with different storage parameters."""
+
+
+@scenario("smoke.feature", "Butter FS Snapshots and Restores")
+def test_butter_fs_snapshots_and_restores():
+    """Butter FS Snapshots and Restores."""
 
 
 @pytest.fixture(scope="module")
@@ -61,7 +67,7 @@ def _(binding_mode, access_mode, fs_type, volume_mode):
     sc_name = f"sc-{mix}"
     sc = client.V1StorageClass(
         metadata=client.V1ObjectMeta(name=sc_name),
-        provisioner="rawfile.csi.openebs.io",
+        provisioner=provisioner,
         volume_binding_mode=binding_mode,
         allow_volume_expansion=True,
         parameters={"csi.storage.k8s.io/fstype": fs_type},
@@ -232,6 +238,266 @@ def _(pod):
     logger.info(f"Pod {pod.metadata.name} is complete")
 
 
+@given("a Persistent Volume Claim with Filesystem btrfs", target_fixture="btrfs_pvc")
+def _():
+    """a Persistent Volume Claim with Filesystem btrfs."""
+    pvc_name = "pvc-btrfs"
+    fs_type = "btrfs"
+    binding_mode = "WaitForFirstConsumer"
+    sc_name = "sc-btrfs"
+    access_mode = "ReadWriteOnce"
+    volume_mode = "Filesystem"
+
+    logger.info(f"Creating PVC: {pvc_name}")
+    sc = client.V1StorageClass(
+        metadata=client.V1ObjectMeta(name=sc_name),
+        provisioner=provisioner,
+        volume_binding_mode=binding_mode,
+        allow_volume_expansion=True,
+        parameters={"csi.storage.k8s.io/fstype": fs_type},
+    )
+    stor_v1 = client.StorageV1Api()
+    try:
+        stor_v1.delete_storage_class(name=sc_name)
+    except ApiException as e:
+        if e.status != 404:
+            raise e
+    stor_v1.create_storage_class(body=sc)
+
+    pvc = client.V1PersistentVolumeClaim(
+        metadata=client.V1ObjectMeta(name=pvc_name),
+        spec=client.V1PersistentVolumeClaimSpec(
+            access_modes=[access_mode],
+            resources=client.V1ResourceRequirements(requests={"storage": "512Mi"}),
+            volume_mode=volume_mode,
+            storage_class_name=sc_name,
+        ),
+    )
+    core_v1 = client.CoreV1Api()
+    pvc = core_v1.create_namespaced_persistent_volume_claim(
+        body=pvc, namespace=namespace
+    )
+    yield pvc
+    if not fixture_cleanup():
+        return
+    logger.info(f"Deleting PVC: {pvc_name}")
+    stor_v1.delete_storage_class(name=sc_name)
+    core_v1.delete_namespaced_persistent_volume_claim(
+        name=pvc_name, namespace=namespace
+    )
+    wait_pvc_deleted(pvc_name)
+
+
+@when("we create a snapshot referencing the PVC", target_fixture="btrfs_snap")
+def _(btrfs_pvc):
+    """we create a snapshot referencing the PVC."""
+    snap_class = "btrfs-class"
+    snap_name = f"{btrfs_pvc.metadata.name}-snap"
+    try:
+        client.CustomObjectsApi().delete_cluster_custom_object(
+            group="snapshot.storage.k8s.io",
+            version="v1",
+            plural="volumesnapshotclasses",
+            name=snap_class,
+        )
+    except ApiException as e:
+        if e.status != 404:
+            raise e
+    body = {
+        "apiVersion": "snapshot.storage.k8s.io/v1",
+        "kind": "VolumeSnapshotClass",
+        "metadata": client.V1ObjectMeta(name=snap_class),
+        "driver": provisioner,
+        "deletionPolicy": "Delete",
+    }
+    logger.info(f"Creating Snapshot Class: {snap_class}")
+    client.CustomObjectsApi().create_cluster_custom_object(
+        group="snapshot.storage.k8s.io",
+        version="v1",
+        plural="volumesnapshotclasses",
+        body=body,
+    )
+    logger.info(f"Created Snapshot Class: {snap_class}")
+    snapshot = {
+        "apiVersion": "snapshot.storage.k8s.io/v1",
+        "kind": "VolumeSnapshot",
+        "metadata": {"name": snap_name, "namespace": namespace},
+        "spec": {
+            "volumeSnapshotClassName": snap_class,
+            "source": {"persistentVolumeClaimName": btrfs_pvc.metadata.name},
+        },
+    }
+    logger.info(f"Creating Snapshot: {snap_name}")
+    snapshot = client.CustomObjectsApi().create_namespaced_custom_object(
+        group="snapshot.storage.k8s.io",
+        version="v1",
+        namespace=namespace,
+        plural="volumesnapshots",
+        body=snapshot,
+    )
+    logger.info(f"Created Snapshot: {snap_name}")
+    yield snapshot
+    if not fixture_cleanup():
+        return
+    logger.debug(f"Deleting Snapshot Class: {snap_class}")
+    client.CustomObjectsApi().delete_cluster_custom_object(
+        group="snapshot.storage.k8s.io",
+        version="v1",
+        plural="volumesnapshotclasses",
+        name=snap_class,
+    )
+    logger.debug(f"Deleting Snapshot: {snap_name}")
+    client.CustomObjectsApi().delete_namespaced_custom_object(
+        group="snapshot.storage.k8s.io",
+        version="v1",
+        namespace=namespace,
+        plural="volumesnapshots",
+        name=snap_name,
+    )
+
+
+@when("we create a restore volume from the snapshot", target_fixture="restore_pvc")
+def _(btrfs_pvc, btrfs_snap):
+    """we create a restore volume from the snapshot."""
+    data_source = client.V1TypedLocalObjectReference(
+        api_group="snapshot.storage.k8s.io",
+        kind="VolumeSnapshot",
+        name=btrfs_snap["metadata"]["name"],
+    )
+    pvc_name = f"{btrfs_snap['metadata']['name']}-restore"
+    restore_pvc = client.V1PersistentVolumeClaim(
+        metadata=client.V1ObjectMeta(name=pvc_name),
+        spec=client.V1PersistentVolumeClaimSpec(
+            access_modes=["ReadWriteOnce"],
+            resources=client.V1ResourceRequirements(requests={"storage": "512Mi"}),
+            storage_class_name=btrfs_pvc.spec.storage_class_name,
+            data_source=data_source,
+        ),
+    )
+    logger.info(f"Creating Restore PVC: {pvc_name}")
+    core_v1 = client.CoreV1Api()
+    restore_pvc = core_v1.create_namespaced_persistent_volume_claim(
+        body=restore_pvc, namespace=namespace
+    )
+    yield restore_pvc
+    if not fixture_cleanup():
+        return
+    logger.info(f"Deleting Restore PVC: {pvc_name}")
+    core_v1.delete_namespaced_persistent_volume_claim(
+        name=pvc_name, namespace=namespace
+    )
+    wait_pvc_deleted(pvc_name)
+
+
+@when("we create a pod which mounts the restore PVC", target_fixture="restore_pod")
+def _(restore_pvc):
+    pod = create_pod(f"restore-{restore_pvc.metadata.name}", restore_pvc, True)
+    yield pod
+    if not fixture_cleanup():
+        return
+    name = pod.metadata.name
+    logger.info(f"Deleting btrfs POD: {name}")
+    try:
+        client.CoreV1Api().delete_namespaced_pod(name, namespace)
+    except ApiException as e:
+        if e.status != 404:
+            raise e
+    wait_pod_deleted(name)
+
+
+@then("the restored volume should contain the snapshot data")
+def _(restore_pvc, restore_pod):
+    """the restored volume should contain the snapshot data."""
+    pvc_name = restore_pvc.metadata.name
+    pod_name = restore_pod.metadata.name
+    wait_pod_running(pod_name)
+    exec_command = [
+        "/bin/sh",
+        "-c",
+        f"cat /{pvc_name}/file",
+    ]
+    out = stream(
+        client.CoreV1Api().connect_get_namespaced_pod_exec,
+        pod_name,
+        namespace,
+        command=exec_command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+    )
+    logger.error(f"C: {out}")
+
+
+@then("the snapshot is eventually ready")
+def _(btrfs_snap):
+    """the snapshot is eventually ready."""
+    wait_snap_ready(btrfs_snap["metadata"]["name"])
+
+
+@then("we create a pod which mounts the PVC", target_fixture="btrfs_pod")
+def _(btrfs_pvc):
+    """we create a pod which mounts the PVC."""
+    pod = create_pod(f"btrfs-{btrfs_pvc.metadata.name}", btrfs_pvc, True)
+    yield pod
+    if not fixture_cleanup():
+        return
+    name = pod.metadata.name
+    logger.info(f"Deleting btrfs POD: {name}")
+    try:
+        client.CoreV1Api().delete_namespaced_pod(name, namespace)
+    except ApiException as e:
+        if e.status != 404:
+            raise e
+    wait_pod_deleted(name)
+
+
+@then("we write some data to the mount path")
+def _(btrfs_pvc, btrfs_pod):
+    """we write some data to the mount path."""
+    pvc_name = btrfs_pvc.metadata.name
+    pod_name = btrfs_pod.metadata.name
+    wait_pod_running(pod_name)
+    exec_command = [
+        "/bin/sh",
+        "-c",
+        f"i=1; while [ $i != 11 ]; do echo $i >> /{pvc_name}/file; i=$((i+1)); done; sync",
+    ]
+    stream(
+        client.CoreV1Api().connect_get_namespaced_pod_exec,
+        pod_name,
+        namespace,
+        command=exec_command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+    )
+
+
+@then("we write some more data to the mount path")
+def _(btrfs_pvc, btrfs_pod):
+    """we write some more data to the mount path."""
+    pvc_name = btrfs_pvc.metadata.name
+    pod_name = btrfs_pod.metadata.name
+    wait_pod_running(pod_name)
+    exec_command = [
+        "/bin/sh",
+        "-c",
+        f"i=11; while [ $i != 22 ]; do echo $i >> /{pvc_name}/file; i=$((i+1)); done; sync",
+    ]
+    stream(
+        client.CoreV1Api().connect_get_namespaced_pod_exec,
+        pod_name,
+        namespace,
+        command=exec_command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+    )
+
+
 @retry(
     stop_max_attempt_number=200,
     wait_fixed=100,
@@ -263,6 +529,22 @@ def wait_pvc_bound(name):
     message = f"PVC {name} not bound yet"
     logger.debug(message)
     assert pvc.status.phase == "Bound", message
+
+
+@retry(
+    stop_max_attempt_number=200,
+    wait_fixed=100,
+)
+def wait_snap_ready(name):
+    snapshot = client.CustomObjectsApi().get_namespaced_custom_object(
+        group="snapshot.storage.k8s.io",
+        version="v1",
+        namespace=namespace,
+        plural="volumesnapshots",
+        name=name,
+    )
+    ready = snapshot.get("status", {}).get("readyToUse", False)
+    assert ready, f"Snapshot {name} is not ready"
 
 
 @retry(
