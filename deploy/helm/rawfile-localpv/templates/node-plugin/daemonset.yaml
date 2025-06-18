@@ -167,3 +167,9 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+        - name: snapshot-controller
+          args:
+            - "--v=2"
+            - "--enable-distributed-snapshotting=true"
+          image: {{ printf "%s/%s:%s" (.Values.node.snapshotController.image.registry | default .Values.global.k8sImageRegistry) .Values.node.snapshotController.image.repository .Values.node.snapshotController.image.tag }}
+          imagePullPolicy: IfNotPresent
