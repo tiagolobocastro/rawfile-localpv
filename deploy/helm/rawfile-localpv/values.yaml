@@ -94,6 +94,15 @@ node:
       # -- Image Tag for `csi-snapshotter`
       tag: v8.2.1
 
+  snapshotController:
+    image:
+      # -- Image Registry for `snapshot-controller`
+      registry: ""
+      # -- Image Repository for `snapshot-controller`
+      repository: sig-storage/snapshot-controller
+      # -- Image Tag for `snapshot-controller`
+      tag: v8.2.1
+
   # -- Data dir path for provisioner to be used by provisioner
   dataDirPath: /var/csi/rawfile
 

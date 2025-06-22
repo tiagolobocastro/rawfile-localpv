@@ -30,5 +30,6 @@ def reuse_cluster():
     # By default, we try to reuse
     if reuse is None or reuse.lower() in ("yes", "true", "y", "1"):
         cluster = common.run("kind", ["get", "clusters"], log_run=False)
+        # todo: use config from ours, rather than allow only ours
         return cluster == "rawfile"
     return False

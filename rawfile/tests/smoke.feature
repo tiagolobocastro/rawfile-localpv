@@ -1,7 +1,9 @@
 Feature: Basic Functionality
 
-  Scenario Outline: Create PVCs with different storage parameters
+  Background:
     Given a Kubernetes cluster with rawfile-localpv installed
+
+  Scenario Outline: Create PVCs with different storage parameters
     When I create a Persistent Volume Claim with <binding_mode> <access_mode> <fs_type> <volume_mode>
     Then the PVC should be bound if Binding mode is Immediate
     When a pod is created with the above PVC
@@ -22,3 +24,15 @@ Feature: Basic Functionality
     | Immediate            | ReadWriteOnce | null    | Block       |
     | WaitForFirstConsumer | ReadWriteOnce | ext4    | Filesystem  |
     | WaitForFirstConsumer | ReadWriteOnce | null    | Block       |
+
+  Scenario: Butter FS Snapshots and Restores
+    Given a Persistent Volume Claim with Filesystem btrfs
+    Then we create a pod which mounts the PVC
+    And we write some data to the mount path
+    When we create a snapshot referencing the PVC
+    Then the snapshot is eventually ready
+    And we write some more data to the mount path
+    When we create a restore volume from the snapshot
+    # todo: restores not working yet
+    #And we create a pod which mounts the restore PVC
+    #Then the restored volume should contain the snapshot data
