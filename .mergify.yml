@@ -1,4 +1,5 @@
 queue_rules:
-  - merge:
-      method: merge
-      strict: smart
+  - actions:
+      merge:
+        method: merge
+        strict: smart
