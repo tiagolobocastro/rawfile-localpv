@@ -1,4 +1,4 @@
 queue_rules:
-  - queue_branch_merge_method: fast-forward
-    merge_method: merge
-    name: default
+  - merge:
+      method: merge
+      strict: smart
