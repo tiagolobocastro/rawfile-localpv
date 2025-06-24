@@ -2,4 +2,4 @@ queue_rules:
   - name: default
     update_method: rebase
     merge_method: merge
-    queue_branch_merge_method: fast-forward
+    speculative_checks: 10
