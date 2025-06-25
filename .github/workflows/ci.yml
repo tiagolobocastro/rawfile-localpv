@@ -8,7 +8,7 @@ on:
       - 'release/**'
   schedule:
     - cron: '0 0 * * *'
-  merge_queue:
+  merge_group:
 
 jobs:
   changes:
