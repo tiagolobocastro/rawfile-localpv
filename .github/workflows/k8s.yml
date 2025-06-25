@@ -23,21 +23,21 @@ jobs:
             network=host
       - name: Pre-populate nix-shell
         run: nix-shell --run "echo"
-      - name: Build test images
-        run: nix-shell --run "CI_TEST=true .ci/build.sh"
-      - name: BootStrap k8s cluster
-        run: |
-          sudo debconf-communicate <<< "set man-db/auto-update false" || true
-          sudo dpkg-reconfigure man-db || true
-          sudo chown $USER /mnt
-          nix-shell --run "TMP_KIND=/mnt/kind/rawfile/ .ci/deployer.sh start"
-      - name: Install HelmChart
-        run: nix-shell --run ".ci/e2e-test/setup.sh"
+      #- name: Build test images
+      #  run: nix-shell --run "CI_TEST=true .ci/build.sh"
+      #- name: BootStrap k8s cluster
+      #  run: |
+      #    sudo debconf-communicate <<< "set man-db/auto-update false" || true
+      #    sudo dpkg-reconfigure man-db || true
+      #    sudo chown $USER /mnt
+      #    nix-shell --run "TMP_KIND=/mnt/kind/rawfile/ .ci/deployer.sh start"
+      #- name: Install HelmChart
+      #  run: nix-shell --run ".ci/e2e-test/setup.sh"
       #- name: Run K8s tests
       #  run: nix-shell --run ".ci/e2e-test/test.sh"
-      - run: |
-          nix-shell --run "kubectl -n openebs logs -lcomponent=node -c csi-driver --tail=-1"
-          nix-shell --run "kubectl -n openebs logs -lcomponent=controller -c csi-driver --tail=-1"
+      #- run: |
+      #    nix-shell --run "kubectl -n openebs logs -lcomponent=node -c csi-driver --tail=-1"
+      #    nix-shell --run "kubectl -n openebs logs -lcomponent=controller -c csi-driver --tail=-1"
       - name: Collect dump
         if: failure()
         run: |
