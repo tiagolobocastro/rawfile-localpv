@@ -5,4 +5,4 @@ queue_rules:
     allow_inplace_checks: true
 
 merge_queue:
-  max_parallel_checks: 10
+  max_parallel_checks: 1
