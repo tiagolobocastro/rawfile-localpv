@@ -4,6 +4,7 @@ queue_rules:
     merge_method: merge
     allow_inplace_checks: true
     batch_size: 10
+    queue_branch_merge_method: fast-forward
 
 merge_queue:
   max_parallel_checks: 1
