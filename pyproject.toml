@@ -21,7 +21,7 @@ btrfsutil = "==6.13"
 rawfile = "rawfile.rawfile:cli"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.4.0"
+pytest = "^8.4.1"
 pytest-bdd = "^8.1.0"
 retrying = "^1.3.4"
 kubernetes = "^33.1.0"
