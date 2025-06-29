@@ -2,6 +2,9 @@
 let
   sources = import ./nix/sources.nix;
   pkgs = import sources.nixpkgs { };
+  kubeVersion = builtins.readFile ./.kube-version;
+  kubeVersionFixed = builtins.elemAt (builtins.match ".*?([0-9]+\.[0-9]+)\.[0-9]+.*" kubeVersion) 0;
+  k3sPackage = "k3s_" + (builtins.replaceStrings ["."] ["_"] kubeVersionFixed);
 in
 {
   nix.nixPath = [
@@ -16,6 +19,9 @@ in
       "/localpv" = {
         target = ./.;
         cache = "none";
+      };
+      "/terminfo" = {
+        target = builtins.getEnv "TERMINFO";
       };
     };
   };
@@ -48,8 +54,10 @@ in
     k3s = {
       enable = true;
       role = "server";
+      package = builtins.getAttr k3sPackage pkgs;
       extraFlags = toString [
         "--disable=traefik"
+        "--disable=local-storage"
       ];
     };
   };
@@ -74,6 +82,7 @@ in
       CI_K3S = "true";
       GOPATH = "/localpv/nix/.go";
       EDITOR = "vim";
+      TERMINFO = "/terminfo";
     };
 
     shellAliases = {
