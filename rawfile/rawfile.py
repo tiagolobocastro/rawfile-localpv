@@ -6,11 +6,12 @@ import time
 import bd2fs
 import click
 import grpc
+from filesystem import FileSystemName
 import rawfile_servicer
 from consts import CONFIG
 from csi import csi_pb2_grpc
 from metrics import expose_metrics
-from rawfile_util import gc_all_volumes, migrate_all_volume_schemas
+from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
 
 
 @click.group()
@@ -19,12 +20,16 @@ from rawfile_util import gc_all_volumes, migrate_all_volume_schemas
 @click.option("--image-tag", envvar="IMAGE_TAG")
 @click.option("--node-datadir", envvar="NODE_DATADIR")
 @click.option("--namespace", envvar="NAMESPACE")
-def cli(image_registry, image_repository, image_tag, node_datadir, namespace):
+@click.option("--default-fs", envvar="DEFAULT_FS", default="ext4")
+def cli(
+    image_registry, image_repository, image_tag, node_datadir, namespace, default_fs
+):
     CONFIG["image_registry"] = image_registry
     CONFIG["image_repository"] = image_repository
     CONFIG["image_tag"] = image_tag
     CONFIG["node_datadir"] = node_datadir
     CONFIG["namespace"] = namespace
+    CONFIG["default_fs"] = FileSystemName(default_fs)
 
 
 @cli.command()

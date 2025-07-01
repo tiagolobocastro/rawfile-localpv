@@ -7,10 +7,86 @@ from os.path import basename, dirname
 from pathlib import Path
 
 from consts import D_PERMS, DATA_DIR, F_PERMS, OWNER_UMASK
-from declarative import be_absent
-from fs_util import path_stats
-from util import run, run_out
 from volume_schema import LATEST_SCHEMA_VERSION, migrate_to
+import os
+import subprocess
+from enum import Enum
+from utils.commands import run
+
+
+class UnknownDeviceForMountpointError(ValueError):
+    """
+    Exception raised when we where unable to find the device for given mountpoint.
+    """
+
+    def __init__(self, mountpoint: str):
+        self.mountpoint = mountpoint
+        self.message = (
+            f"Unable to determine the device for mountpoint '{self.mountpoint}'"
+        )
+        super().__init__(self.message)
+
+
+class InvalidDeviceForMountpointError(ValueError):
+    """
+    Exception raised when device that is connected to mountpoint is not a correct device
+    """
+
+    def __init__(self, device: str, mountpoint: str):
+        self.device = device
+        self.mountpoint = mountpoint
+        self.message = (
+            f"Device {self.device} is not valid for mountpoint {self.mountpoint}"
+        )
+
+
+class AccessType(Enum):
+    mount = 1
+    block = 2
+
+
+def path_stats(path):
+    fs_stat = os.statvfs(path)
+    return {
+        "fs_size": fs_stat.f_frsize * fs_stat.f_blocks,
+        "fs_avail": fs_stat.f_frsize * fs_stat.f_bavail,
+        "fs_files": fs_stat.f_files,
+        "fs_files_avail": fs_stat.f_favail,
+    }
+
+
+def device_stats(dev):
+    output = run(
+        f"blockdev --getsize64 {dev}", check=True, capture_output=True
+    ).stdout.decode()
+    dev_size = int(output)
+    return {"dev_size": dev_size}
+
+
+def dev_to_mountpoint(dev_name):
+    try:
+        output = run(
+            f"findmnt --json --first-only {dev_name}",
+            check=True,
+            capture_output=True,
+        ).stdout.decode()
+        data = json.loads(output)
+        return data["filesystems"][0]["target"]
+    except subprocess.CalledProcessError:
+        return None
+
+
+def mountpoint_to_dev(mountpoint):
+    assert Path(mountpoint).is_dir()
+    res = run(
+        f"findmnt --json --first-only --nofsroot --mountpoint {mountpoint}",
+        capture_output=True,
+        check=False,
+    )
+    if res.returncode != 0:
+        return None
+    data = json.loads(res.stdout.decode().strip())
+    return data["filesystems"][0]["source"]
 
 
 def img_dir(volume_id):
@@ -39,9 +115,12 @@ def img_file(volume_id):
 def destroy(volume_id, dry_run=True):
     print(f"Destroying {volume_id}")
     if not dry_run:
-        be_absent(img_file(volume_id))
-        be_absent(meta_file(volume_id))
-        be_absent(img_dir(volume_id))
+        Path(img_file(volume_id)).unlink(missing_ok=True)
+        Path(meta_file(volume_id)).unlink(missing_ok=True)
+        try:
+            Path(img_dir(volume_id)).rmdir()
+        except FileNotFoundError:
+            pass
 
 
 def gc_if_needed(volume_id, dry_run=True):
@@ -106,7 +185,7 @@ def truncate(img_file, size):
 
 
 def attached_loops(file: str) -> list[str]:
-    out = run_out(f"losetup -j {file}").stdout.decode()
+    out = run(f"losetup -j {file}", capture_output=True).stdout.decode()
     lines = out.splitlines()
     devs = [line.split(":", 1)[0] for line in lines]
     return devs
@@ -114,7 +193,7 @@ def attached_loops(file: str) -> list[str]:
 
 def attach_loop(file) -> str:
     def next_loop():
-        loop_file = run_out("losetup -f").stdout.decode().strip()
+        loop_file = run("losetup -f", capture_output=True).stdout.decode().strip()
         if not Path(loop_file).exists():
             pfx_len = len("/dev/loop")
             loop_dev_id = loop_file[pfx_len:]
@@ -173,7 +252,7 @@ def gc_all_volumes(dry_run=True):
         gc_if_needed(volume_id, dry_run=dry_run)
 
 
-def get_volumes_stats() -> [dict]:
+def get_volumes_stats() -> dict[str, dict[str, int]]:
     volumes_stats = {}
     for volume_id in list_all_volumes():
         try:
@@ -194,3 +273,28 @@ def get_capacity():
     for volume_stat in get_volumes_stats().values():
         capacity -= volume_stat["total"] - volume_stat["used"]
     return capacity
+
+
+def be_absent(path):
+    path = Path(path)
+    if path.is_symlink():
+        path.unlink()
+    elif path.is_file():
+        path.unlink()
+    elif path.is_dir():
+        path.rmdir()
+        # XXX: should we `shutil.rmtree(path)` instead?
+    elif not path.exists():
+        return
+    else:
+        raise Exception("Unknown file type")
+
+
+def be_symlink(path, to):
+    path = Path(path)
+    to = Path(to)
+    if path.is_symlink():
+        if os.readlink(path) == str(to):
+            return
+    be_absent(path)
+    path.symlink_to(to)

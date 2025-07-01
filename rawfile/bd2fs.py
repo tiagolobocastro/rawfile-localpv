@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import grpc
+import time
 from csi import csi_pb2, csi_pb2_grpc
 from csi.csi_pb2 import (
     CreateVolumeRequest,
@@ -11,24 +12,17 @@ from csi.csi_pb2 import (
     NodeUnstageVolumeRequest,
 )
 from declarative import (
-    be_absent,
-    be_formatted,
-    be_fs_expanded,
-    be_mounted,
-    be_unmounted,
+    mount,
+    unmount,
 )
-from fs_util import AccessType, mountpoint_to_dev, path_stats
+from utils.rawfile import be_absent
 from google.protobuf.timestamp_pb2 import Timestamp
-from remote import btrfs_create_snapshot, btrfs_delete_snapshot
-from util import log_grpc_request
+from utils.logs import log_grpc_request
+from filesystem import get_from_device_or_fallback, from_device
+from filesystem.utils import get_device_for_mountpoint
 from rawfile_servicer import check_access_type, get_access_type
-
-
-def get_fs(request):
-    fs_type = request.volume_capability.mount.fs_type
-    if fs_type == "":
-        fs_type = "ext4"
-    return fs_type
+from utils.rawfile import img_file, attach_loop, AccessType, path_stats
+from filesystem.base import UnknownFileSystemError
 
 
 class Bd2FsIdentityServicer(csi_pb2_grpc.IdentityServicer):
@@ -66,15 +60,16 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
             AccessType.block: path.touch,
         }
         access_type_actions[get_access_type(request)](exist_ok=True)
-        be_mounted(
-            dev=staging_dev, mountpoint=request.target_path, readonly=request.readonly
+        mount(
+            device=staging_dev,
+            mountpoint=request.target_path,
+            readonly=request.readonly,
         )
         return csi_pb2.NodePublishVolumeResponse()
 
     @log_grpc_request
     def NodeUnpublishVolume(self, request, context):
-        be_unmounted(request.target_path)
-        be_absent(request.target_path)
+        unmount(request.target_path, clear_mountpoint=True)
         return csi_pb2.NodeUnpublishVolumeResponse()
 
     @log_grpc_request
@@ -104,22 +99,23 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
         self.bds.NodePublishVolume(bd_publish_request, context)
 
         if get_access_type(request) is AccessType.mount:
-            mount_path = f"{request.staging_target_path}/mount"
-            Path(mount_path).mkdir(exist_ok=True)
-            be_formatted(dev=bd_publish_request.target_path, fs=get_fs(request))
-            be_mounted(dev=bd_publish_request.target_path, mountpoint=mount_path)
+            default_fs = request.volume_capability.mount.fs_type
+            fs = get_from_device_or_fallback(bd_publish_request.target_path, default_fs)
+            fs.mountpoint = f"{request.staging_target_path}/mount"
+            fs.format_and_mount(
+                mount_options=[]
+            )  # TODO: Respect from bd_publish_request.volume_capability
 
         return csi_pb2.NodeStageVolumeResponse()
 
     @log_grpc_request
     def NodeUnstageVolume(self, request, context):
         mount_path = f"{request.staging_target_path}/mount"
-        be_unmounted(mount_path)
-        be_absent(mount_path)
+        device_path = f"{request.staging_target_path}/device"
+        unmount(mount_path, clear_mountpoint=True)
 
         bd_unpublish_request = NodeUnpublishVolumeRequest()
         bd_unpublish_request.volume_id = request.volume_id
-        device_path = f"{request.staging_target_path}/device"
         bd_unpublish_request.target_path = device_path
         self.bds.NodeUnpublishVolume(bd_unpublish_request, context)
 
@@ -171,7 +167,7 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
         # for backwards compatibility,
         # but the CO SHOULD supply it.
         # Apparently, k8s 1.18 does not supply it. So:
-        dev_path = mountpoint_to_dev(request.volume_path)
+        dev_path = get_device_for_mountpoint(request.volume_path)
         volume_path = request.volume_path
         if dev_path is None:
             dev_path = f"{request.volume_path}/device"
@@ -187,7 +183,11 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
         # > access_type from given volume_path for the volume and perform
         # > node expansion.
         # Apparently k8s 1.18 omits this field.
-        be_fs_expanded(bd_request.volume_path, volume_path)
+        fs = from_device(dev_path)
+        if not fs:
+            raise UnknownFileSystemError(device=dev_path)
+        fs.mountpoint = volume_path
+        fs.resize()
 
         size = request.capacity_range.required_bytes
         return csi_pb2.NodeExpandVolumeResponse(capacity_bytes=size)
@@ -249,19 +249,30 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def CreateSnapshot(self, request: csi_pb2.CreateSnapshotRequest, context):
-        volume_id = request.source_volume_id
-        name = request.name
+        fs = None
+        loop_dev = None
+        try:
+            file = img_file(request.source_volume_id)
+            loop_dev = attach_loop(file)
+            fs = from_device(loop_dev)
+            if not fs:
+                raise UnknownFileSystemError(
+                    device=loop_dev, volume_id=request.source_volume_id
+                )
 
-        snapshot_id, creation_time_ns = btrfs_create_snapshot(
-            volume_id=volume_id, name=name
-        )
-
+            fs.create_snapshot(name=request.name)
+            creation_time_ns = time.time_ns()
+            snapshot_id = f"{request.source_volume_id}/{request.name}"
+        finally:
+            if fs:
+                fs.unmount(clear_mountpoint=True)
+            # TODO: detach loopdev when we get seperated loop devices
         nano = 10**9
         return csi_pb2.CreateSnapshotResponse(
             snapshot=csi_pb2.Snapshot(
                 size_bytes=0,
                 snapshot_id=snapshot_id,
-                source_volume_id=volume_id,
+                source_volume_id=request.source_volume_id,
                 creation_time=Timestamp(
                     seconds=creation_time_ns // nano, nanos=creation_time_ns % nano
                 ),
@@ -271,7 +282,19 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def DeleteSnapshot(self, request: csi_pb2.DeleteSnapshotRequest, context):
+        fs = None
+        loop_dev = None
         snapshot_id = request.snapshot_id
         volume_id, name = snapshot_id.rsplit("/", 1)
-        btrfs_delete_snapshot(volume_id=volume_id, name=name)
-        return csi_pb2.DeleteSnapshotResponse()
+        try:
+            file = img_file(volume_id)
+            loop_dev = attach_loop(file)
+            fs = from_device(loop_dev)
+            if not fs:
+                raise UnknownFileSystemError(device=loop_dev, volume_id=volume_id)
+
+            fs.delete_snapshot(name=name)
+        finally:
+            if fs:
+                fs.unmount(clear_mountpoint=True)
+            # TODO: detach loopdev when we get seperated loop devices
