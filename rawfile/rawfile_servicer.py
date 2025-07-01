@@ -2,7 +2,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 
 import grpc
-import rawfile_util
+import utils.rawfile
 from consts import (
     PROVISIONER_NAME,
     PROVISIONER_VERSION,
@@ -10,14 +10,19 @@ from consts import (
     VOLUME_IN_USE_EXIT_CODE,
 )
 from csi import csi_pb2, csi_pb2_grpc
-from declarative import be_absent, be_symlink
-from fs_util import device_stats, mountpoint_to_dev
+from utils.rawfile import be_absent, be_symlink
 from google.protobuf.wrappers_pb2 import BoolValue
 from orchestrator.k8s import run_on_node, volume_to_node
-from rawfile_util import attach_loop, detach_loops
-from remote import expand_rawfile, get_capacity, init_rawfile, scrub
-from util import log_grpc_request, run
-from fs_util import AccessType
+from utils.remote import expand_rawfile, get_capacity, init_rawfile, scrub
+from utils.logs import log_grpc_request
+from utils.commands import run
+from utils.rawfile import (
+    AccessType,
+    attach_loop,
+    detach_loops,
+    device_stats,
+    mountpoint_to_dev,
+)
 
 NODE_NAME_TOPOLOGY_KEY = "hostname"
 
@@ -105,7 +110,7 @@ class RawFileNodeServicer(csi_pb2_grpc.NodeServicer):
 
     @log_grpc_request
     def NodeStageVolume(self, request, context):
-        img_file = rawfile_util.img_file(request.volume_id)
+        img_file = utils.rawfile.img_file(request.volume_id)
         loop_file = attach_loop(img_file)
         staging_path = request.staging_target_path
         staging_dev_path = Path(f"{staging_path}/dev")
@@ -114,7 +119,7 @@ class RawFileNodeServicer(csi_pb2_grpc.NodeServicer):
 
     @log_grpc_request
     def NodeUnstageVolume(self, request, context):
-        img_file = rawfile_util.img_file(request.volume_id)
+        img_file = utils.rawfile.img_file(request.volume_id)
         staging_path = request.staging_target_path
         staging_dev_path = Path(f"{staging_path}/dev")
         be_absent(staging_dev_path)
