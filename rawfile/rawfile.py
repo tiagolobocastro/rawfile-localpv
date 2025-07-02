@@ -12,6 +12,7 @@ from consts import CONFIG
 from csi import csi_pb2_grpc
 from metrics import expose_metrics
 from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
+from utils.logs import LoggingFormats, init as init_logging
 
 
 @click.group()
@@ -21,8 +22,15 @@ from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
 @click.option("--node-datadir", envvar="NODE_DATADIR")
 @click.option("--namespace", envvar="NAMESPACE")
 @click.option("--default-fs", envvar="DEFAULT_FS", default="ext4")
+@click.option("--log-format", envvar="LOG_FORMAT", default=LoggingFormats.JSON)
 def cli(
-    image_registry, image_repository, image_tag, node_datadir, namespace, default_fs
+    image_registry,
+    image_repository,
+    image_tag,
+    node_datadir,
+    namespace,
+    default_fs,
+    log_format,
 ):
     CONFIG["image_registry"] = image_registry
     CONFIG["image_repository"] = image_repository
@@ -30,6 +38,7 @@ def cli(
     CONFIG["node_datadir"] = node_datadir
     CONFIG["namespace"] = namespace
     CONFIG["default_fs"] = FileSystemName(default_fs)
+    init_logging(LoggingFormats(log_format))
 
 
 @cli.command()
