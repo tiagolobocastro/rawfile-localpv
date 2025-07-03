@@ -13,7 +13,7 @@ class LoggingFormats(StrEnum):
     PRETTY = "pretty"
 
 
-def _human_format(record) -> str:
+def _pretty_format(record) -> str:
     format = str(LOGURU_FORMAT)
     extra = record.get("extra", {})
     if extra and len(extra.keys()):
@@ -39,7 +39,7 @@ def _json_sink(message):
 
 _logging_handlers = {
     LoggingFormats.JSON: {"sink": _json_sink},
-    LoggingFormats.HUMAN: {"sink": sys.stdout, "format": _human_format},
+    LoggingFormats.PRETTY: {"sink": sys.stdout, "format": _pretty_format},
 }
 
 _format = LoggingFormats.JSON
