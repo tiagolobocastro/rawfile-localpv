@@ -10,7 +10,7 @@ from google.protobuf.json_format import MessageToDict
 
 class LoggingFormats(StrEnum):
     JSON = "json"
-    HUMAN = "human"
+    PRETTY = "pretty"
 
 
 def _human_format(record) -> str:
