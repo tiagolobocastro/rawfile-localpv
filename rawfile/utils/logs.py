@@ -1,5 +1,4 @@
-import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import functools
 import sys
 import json
@@ -9,11 +8,35 @@ from enum import StrEnum
 from google.protobuf.json_format import MessageToDict
 
 
+def _format_timedelta(td):
+    total_ms = int(td.total_seconds() * 1000)
+    days, rem_ms = divmod(total_ms, 86400 * 1000)
+    hours, rem_ms = divmod(rem_ms, 3600 * 1000)
+    minutes, rem_ms = divmod(rem_ms, 60 * 1000)
+    seconds, milliseconds = divmod(rem_ms, 1000)
+
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if seconds:
+        parts.append(f"{seconds}s")
+    if milliseconds or not parts:
+        parts.append(f"{milliseconds}ms")
+
+    return " ".join(parts)
+
+
 class _JSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        elif isinstance(o, timedelta):
+            return _format_timedelta(o)
+        return super().default(o)
 
 
 class LoggingFormats(StrEnum):
@@ -31,7 +54,7 @@ def _pretty_format(record) -> str:
 
 def _json_serialize(record):
     subset = {
-        "timestamp": record["time"].timestamp(),
+        "timestamp": record["time"],
         "level": record["level"].name,
         "culler": f"{record['name']}:{record['function']}:{record['line']}",
         "message": record["message"],
@@ -61,7 +84,7 @@ def init(format: LoggingFormats):
 def log_grpc_request(func):
     @functools.wraps(func)
     def wrap(self, request, context):
-        start = time.time()
+        start = datetime.now()
         is_json = _format == LoggingFormats.JSON
         args = {
             "handler": func.__name__,
@@ -70,11 +93,11 @@ def log_grpc_request(func):
         }
         try:
             res = func(self, request, context)
-            end = time.time()
+            end = datetime.now()
             args.update(
                 {
                     "response": MessageToDict(res) if is_json else request,
-                    "latency": f"{(end - start) * 1000:.2f}ms",
+                    "latency": end - start,
                     "endtime": end,
                     "success": True,
                 }
@@ -82,7 +105,7 @@ def log_grpc_request(func):
             logger.info("GRPC Server Access Log", **args)
             return res
         except Exception as exc:
-            end = time.time()
+            end = datetime.now()
             args.update(
                 {
                     "response": None,
