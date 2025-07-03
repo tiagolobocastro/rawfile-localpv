@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 import functools
 import sys
 import json
@@ -6,6 +7,13 @@ from loguru import logger
 from loguru._defaults import LOGURU_FORMAT
 from enum import StrEnum
 from google.protobuf.json_format import MessageToDict
+
+
+class _JSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 class LoggingFormats(StrEnum):
@@ -29,7 +37,7 @@ def _json_serialize(record):
         "message": record["message"],
     }
     subset.update({k: v for k, v in record["extra"].items()})
-    return json.dumps(subset)
+    return json.dumps(subset, cls=_JSONEncoder)
 
 
 def _json_sink(message):
