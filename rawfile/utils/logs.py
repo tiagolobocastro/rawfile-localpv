@@ -8,7 +8,7 @@ from enum import StrEnum
 from google.protobuf.json_format import MessageToDict
 
 
-def _format_timedelta(td):
+def _format_timedelta(td: timedelta):
     total_ms = int(td.total_seconds() * 1000)
     days, rem_ms = divmod(total_ms, 86400 * 1000)
     hours, rem_ms = divmod(rem_ms, 3600 * 1000)
