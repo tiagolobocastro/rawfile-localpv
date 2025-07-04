@@ -6,6 +6,8 @@ from os import umask
 from os.path import basename, dirname
 from pathlib import Path
 
+from loguru import logger
+
 from consts import D_PERMS, DATA_DIR, F_PERMS, OWNER_UMASK
 from volume_schema import LATEST_SCHEMA_VERSION, migrate_to
 import os
@@ -113,7 +115,7 @@ def img_file(volume_id):
 
 
 def destroy(volume_id, dry_run=True):
-    print(f"Destroying {volume_id}")
+    logger.info("Destroying Volume", volume_id=volume_id, dry_run=dry_run)
     if not dry_run:
         Path(img_file(volume_id)).unlink(missing_ok=True)
         Path(meta_file(volume_id)).unlink(missing_ok=True)

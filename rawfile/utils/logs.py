@@ -73,7 +73,7 @@ _logging_handlers = {
     LoggingFormats.PRETTY: {"sink": sys.stdout, "format": _pretty_format},
 }
 
-_format = LoggingFormats.JSON
+format = LoggingFormats.JSON
 
 
 def init(format: LoggingFormats):
@@ -85,7 +85,7 @@ def log_grpc_request(func):
     @functools.wraps(func)
     def wrap(self, request, context):
         start = datetime.now()
-        is_json = _format == LoggingFormats.JSON
+        is_json = format == LoggingFormats.JSON
         args = {
             "handler": func.__name__,
             "request": MessageToDict(request) if is_json else request,
@@ -130,3 +130,6 @@ def log_grpc_request(func):
             raise exc
 
     return wrap
+
+
+__all__ = ["log_grpc_request", "logger", "init", "format"]

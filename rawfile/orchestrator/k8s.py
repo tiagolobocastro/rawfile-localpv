@@ -7,8 +7,10 @@ from time import sleep
 import pykube
 import re
 import yaml
+from datetime import datetime
 from consts import CONFIG, VOLUME_IS_ATTACHED
 from munch import Munch
+from utils.logs import logger, format as log_format
 
 api = pykube.HTTPClient(pykube.KubeConfig.from_env())
 
@@ -35,11 +37,13 @@ required:
 
 
 def wait_for(pred, desc=""):
-    print(f"Waiting for {desc}", end="", flush=True)
+    start = datetime.now()
     while not pred():
-        print(".", end="", flush=True)
         sleep(0.5)
-    print(" done")
+    end = datetime.now()
+    logger.info(
+        f"Finished waiting for {desc}", start=start, end=end, latency=end - start
+    )
 
 
 def run_on_node(fn, node):
@@ -56,6 +60,7 @@ def run_on_node(fn, node):
         ),
         "image_tag": CONFIG["image_tag"],
         "datadir": CONFIG["node_datadir"],
+        "log_format": log_format,
     }
     template = Path("./templates/task.yaml").read_bytes().decode()
     manifest = template.format(**ctx)

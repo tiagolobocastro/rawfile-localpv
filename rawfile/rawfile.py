@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-import logging
 from concurrent import futures
 import signal
-import time
 import bd2fs
 import click
 import grpc
 from filesystem import FileSystemName
 import rawfile_servicer
+from datetime import datetime
 from consts import CONFIG
 from csi import csi_pb2_grpc
 from metrics import expose_metrics
 from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
-from utils.logs import LoggingFormats, init as init_logging
+from utils.logs import LoggingFormats, init as init_logging, logger
 
 
 @click.group()
@@ -66,17 +65,20 @@ def csi_driver(endpoint, nodeid, enable_metrics, metrics_port):
     )
     server.add_insecure_port(endpoint)
 
-    def signal_handler(signum, frame: None):
+    def signal_handler(sig, _=None):
         grace_seconds = 20
 
-        print(f"Received termination request via signal: {signal.Signals(signum).name}")
-        print(f"Stopping the CSI server with a grace period of {grace_seconds} seconds")
+        logger.info("Received termination request", signal=signal.Signals(sig).name)
+        logger.info(
+            "Stopping the CSI server with a grace period", grace_seconds=grace_seconds
+        )
 
-        start = time.time()
+        start = datetime.now()
         server.stop(grace_seconds)
-        elapsed = time.time() - start
+        end = datetime.now()
+        elapsed = end - start
 
-        print(f"CSI Server has stopped after {elapsed:.1f} seconds")
+        logger.info("CSI Server has stopped", elapsed=elapsed, start=start, end=end)
 
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
@@ -92,5 +94,4 @@ def gc(dry_run):
 
 
 if __name__ == "__main__":
-    logging.basicConfig()
     cli()

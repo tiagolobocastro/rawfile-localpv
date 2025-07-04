@@ -17,7 +17,10 @@ class remote_fn(object):
 python <<EOF
 import base64
 import pickle
+import os
+from utils.logs import LoggingFormats, init as init_logging, logger
 
+init_logging(LoggingFormats(os.getenv("LOG_FORMAT")))
 remote_fn = lambda fn: fn # FIXME: dirty hack
 call_data = pickle.loads(base64.b64decode({call_data_serialized}))
 exec(call_data[0])
@@ -105,13 +108,17 @@ def is_attached(volume_id):
 
 def log_attached(volume_id):
     from consts import VOLUME_IS_ATTACHED
+    from utils.logs import logger
 
     try:
         attached = is_attached(volume_id)
-        print(f"{VOLUME_IS_ATTACHED}={attached}")
-    except Exception as e:
+        logger.info("Volume attachment", **{VOLUME_IS_ATTACHED: attached})
+        print(
+            f"{VOLUME_IS_ATTACHED}={attached}"
+        )  # We are using this output in `k8s.py`
+    except Exception:
         # Failed to figure this out, keep old behavior
-        print(f"Failed to check if volume was attached: {e}")
+        logger.exception("Failed to check if volume was attached", volume_id=volume_id)
         pass
 
 
