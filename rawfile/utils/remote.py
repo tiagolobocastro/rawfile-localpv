@@ -20,7 +20,7 @@ import pickle
 import os
 from utils.logs import LoggingFormats, init as init_logging, logger
 
-init_logging(LoggingFormats(os.getenv("LOG_FORMAT")))
+init_logging(LoggingFormats(os.getenv("LOG_FORMAT")), os.getenv("LOG_LEVEL"))
 remote_fn = lambda fn: fn # FIXME: dirty hack
 call_data = pickle.loads(base64.b64decode({call_data_serialized}))
 exec(call_data[0])

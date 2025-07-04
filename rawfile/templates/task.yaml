@@ -37,6 +37,8 @@ spec:
       env:
         - name: LOG_FORMAT
           value: {log_format}
+        - name: LOG_LEVEL
+          value: {log_level}
       command:
         - /bin/sh
         - -c

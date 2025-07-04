@@ -22,6 +22,7 @@ from utils.logs import LoggingFormats, init as init_logging, logger
 @click.option("--namespace", envvar="NAMESPACE")
 @click.option("--default-fs", envvar="DEFAULT_FS", default="ext4")
 @click.option("--log-format", envvar="LOG_FORMAT", default=LoggingFormats.JSON)
+@click.option("--log-level", envvar="LOG_LEVEL", default="INFO")
 def cli(
     image_registry,
     image_repository,
@@ -30,6 +31,7 @@ def cli(
     namespace,
     default_fs,
     log_format,
+    log_level,
 ):
     CONFIG["image_registry"] = image_registry
     CONFIG["image_repository"] = image_repository
@@ -37,7 +39,7 @@ def cli(
     CONFIG["node_datadir"] = node_datadir
     CONFIG["namespace"] = namespace
     CONFIG["default_fs"] = FileSystemName(default_fs)
-    init_logging(LoggingFormats(log_format))
+    init_logging(_format=LoggingFormats(log_format), _level=log_level)
 
 
 @cli.command()

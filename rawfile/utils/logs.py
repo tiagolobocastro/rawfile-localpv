@@ -49,14 +49,16 @@ def _pretty_format(record) -> str:
     extra = record.get("extra", {})
     if extra and len(extra.keys()):
         format += " | {extra}"
-    return str(format)
+    if record.get("exception", None):
+        format += "\n{exception}"
+    return str(format) + "\n"
 
 
 def _json_serialize(record):
     subset = {
         "timestamp": record["time"],
         "level": record["level"].name,
-        "culler": f"{record['name']}:{record['function']}:{record['line']}",
+        "caller": f"{record['name']}:{record['function']}:{record['line']}",
         "message": record["message"],
     }
     subset.update({k: v for k, v in record["extra"].items()})
@@ -70,15 +72,18 @@ def _json_sink(message):
 
 _logging_handlers = {
     LoggingFormats.JSON: {"sink": _json_sink},
-    LoggingFormats.PRETTY: {"sink": sys.stdout, "format": _pretty_format},
+    LoggingFormats.PRETTY: {"sink": sys.stderr, "format": _pretty_format},
 }
 
 format = LoggingFormats.JSON
+level = "INFO"
 
 
-def init(format: LoggingFormats):
+def init(_format: LoggingFormats, _level: str):
     logger.remove()
-    logger.add(**_logging_handlers[format])
+    format = _format
+    level = _level
+    logger.add(**_logging_handlers[format], level=level)
 
 
 def log_grpc_request(func):

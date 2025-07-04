@@ -34,6 +34,7 @@ helm upgrade --wait \
   -n openebs --create-namespace -i rawfile-localpv \
   --set metrics.serviceMonitor.enabled=false \
   --set image.registry=$CI_REGISTRY,image.repository=$CI_IMAGE_REPO,image.tag=$TAG,image.pullPolicy=Never \
+  --set logLevel=DEBUG,logFormat=pretty \
   $CHART
 
 kubectl wait --for=condition=ready pod --all -n openebs

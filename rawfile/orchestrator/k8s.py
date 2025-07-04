@@ -10,7 +10,7 @@ import yaml
 from datetime import datetime
 from consts import CONFIG, VOLUME_IS_ATTACHED
 from munch import Munch
-from utils.logs import logger, format as log_format
+from utils.logs import logger, format as log_format, level as log_level
 
 api = pykube.HTTPClient(pykube.KubeConfig.from_env())
 
@@ -61,6 +61,7 @@ def run_on_node(fn, node):
         "image_tag": CONFIG["image_tag"],
         "datadir": CONFIG["node_datadir"],
         "log_format": log_format,
+        "log_level": log_level,
     }
     template = Path("./templates/task.yaml").read_bytes().decode()
     manifest = template.format(**ctx)
