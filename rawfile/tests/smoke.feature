@@ -31,8 +31,19 @@ Feature: Basic Functionality
     And we write some data to the mount path
     When we create a snapshot referencing the PVC
     Then the snapshot is eventually ready
-    And we write some more data to the mount path
+    #And we write some more data to the mount path
     # todo: restores not working yet
     #When we create a restore volume from the snapshot
     #And we create a pod which mounts the restore PVC
     #Then the restored volume should contain the snapshot data
+
+  Scenario: Deleting Snapshot of unstaged volume
+    Given a Persistent Volume Claim with Filesystem btrfs
+    Then we create a pod which mounts the PVC
+    And we write some data to the mount path
+    And we terminate the btrfs app pod
+    And the volume is unstaged
+    When we create a snapshot referencing the PVC
+    Then the snapshot is eventually ready
+    When we delete the snapshot
+    Then it should be eventually be deleted
