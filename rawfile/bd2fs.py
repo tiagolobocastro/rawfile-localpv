@@ -269,22 +269,18 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
     def CreateSnapshot(self, request: csi_pb2.CreateSnapshotRequest, context):
         fs = None
         loop_dev = None
-        try:
-            file = img_file(request.source_volume_id)
-            loop_dev = attach_loop(file)
-            fs = from_device(loop_dev)
-            if not fs:
-                raise UnknownFileSystemError(
-                    device=loop_dev, volume_id=request.source_volume_id
-                )
+        file = img_file(request.source_volume_id)
+        loop_dev = attach_loop(file)
+        fs = from_device(loop_dev)
+        if not fs:
+            raise UnknownFileSystemError(
+                device=loop_dev, volume_id=request.source_volume_id
+            )
 
-            fs.create_snapshot(name=request.name)
-            creation_time_ns = time.time_ns()
-            snapshot_id = f"{request.source_volume_id}/{request.name}"
-        finally:
-            if fs:
-                fs.unmount(clear_mountpoint=True)
-            # TODO: detach loopdev when we get seperated loop devices
+        fs.create_snapshot(name=request.name)
+        creation_time_ns = time.time_ns()
+        snapshot_id = f"{request.source_volume_id}/{request.name}"
+        # TODO: detach loopdev when we get seperated loop devices
         nano = 10**9
         return csi_pb2.CreateSnapshotResponse(
             snapshot=csi_pb2.Snapshot(
@@ -307,17 +303,15 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
         try:
             file = img_file(volume_id)
-            loop_dev = attach_loop(file)
-            fs = from_device(loop_dev)
-            if not fs:
-                raise UnknownFileSystemError(device=loop_dev, volume_id=volume_id)
-
-            fs.delete_snapshot(name=name)
         except FileNotFoundError:
             # if base is deleted, then snapshot is gone anyway
-            pass
-        finally:
-            if fs:
-                fs.unmount(clear_mountpoint=True)
-            # TODO: detach loopdev when we get seperated loop devices
+            return
+
+        loop_dev = attach_loop(file)
+        fs = from_device(loop_dev)
+        if not fs:
+            raise UnknownFileSystemError(device=loop_dev, volume_id=volume_id)
+        fs.delete_snapshot(name=name)
+
+        # TODO: detach loopdev when we get seperated loop devices
         return csi_pb2.DeleteSnapshotResponse()
