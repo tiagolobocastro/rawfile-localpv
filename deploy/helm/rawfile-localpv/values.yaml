@@ -1,6 +1,11 @@
 # -- Name of the registered CSI Driver in the cluster
 provisionerName: "rawfile.csi.openebs.io"
 
+# -- Level of the logs (DEBUG, INFO, etc.)
+logLevel: INFO
+# -- Format of the logs (json, pretty)
+logFormat: json
+
 global:
   # -- Default image registry for Images from DockerHub
   imageRegistry: docker.io

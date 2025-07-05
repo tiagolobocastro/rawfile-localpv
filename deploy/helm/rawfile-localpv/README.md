@@ -42,6 +42,8 @@ Kubernetes: `>= 1.21`
 | image.repository | string | `"openebs/rawfile-localpv"` | Image repository for rawfile-localpv |
 | image.tag | string | `""` | Default image tag for node and controller components (uses AppVersion if empty) |
 | imagePullSecrets | list | `[]` | Sets image pull secret while pulling images from a private registry |
+| logFormat | string | `"json"` | Format of the logs (json, pretty) |
+| logLevel | string | `"INFO"` | Level of the logs (DEBUG, INFO, etc.) |
 | metrics.enabled | bool | `true` | Completely enable or disable metrics |
 | metrics.port | int | `9100` | Sets metrics port |
 | metrics.serviceMonitor.enabled | bool | `false` | Enables prometheus service monitor |

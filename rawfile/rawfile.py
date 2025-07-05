@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-import logging
 from concurrent import futures
 import signal
-import time
 import bd2fs
 import click
 import grpc
 from filesystem import FileSystemName
 import rawfile_servicer
+from datetime import datetime
 from consts import CONFIG
 from csi import csi_pb2_grpc
 from metrics import expose_metrics
 from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
+from utils.logs import LoggingFormats, init as init_logging, logger
 
 
 @click.group()
@@ -21,8 +21,17 @@ from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
 @click.option("--node-datadir", envvar="NODE_DATADIR")
 @click.option("--namespace", envvar="NAMESPACE")
 @click.option("--default-fs", envvar="DEFAULT_FS", default="ext4")
+@click.option("--log-format", envvar="LOG_FORMAT", default=LoggingFormats.JSON)
+@click.option("--log-level", envvar="LOG_LEVEL", default="INFO")
 def cli(
-    image_registry, image_repository, image_tag, node_datadir, namespace, default_fs
+    image_registry,
+    image_repository,
+    image_tag,
+    node_datadir,
+    namespace,
+    default_fs,
+    log_format,
+    log_level,
 ):
     CONFIG["image_registry"] = image_registry
     CONFIG["image_repository"] = image_repository
@@ -30,6 +39,7 @@ def cli(
     CONFIG["node_datadir"] = node_datadir
     CONFIG["namespace"] = namespace
     CONFIG["default_fs"] = FileSystemName(default_fs)
+    init_logging(_format=LoggingFormats(log_format), _level=log_level)
 
 
 @cli.command()
@@ -57,17 +67,20 @@ def csi_driver(endpoint, nodeid, enable_metrics, metrics_port):
     )
     server.add_insecure_port(endpoint)
 
-    def signal_handler(signum, frame: None):
+    def signal_handler(sig, _=None):
         grace_seconds = 20
 
-        print(f"Received termination request via signal: {signal.Signals(signum).name}")
-        print(f"Stopping the CSI server with a grace period of {grace_seconds} seconds")
+        logger.info("Received termination request", signal=signal.Signals(sig).name)
+        logger.info(
+            "Stopping the CSI server with a grace period", grace_seconds=grace_seconds
+        )
 
-        start = time.time()
+        start = datetime.now()
         server.stop(grace_seconds)
-        elapsed = time.time() - start
+        end = datetime.now()
+        elapsed = end - start
 
-        print(f"CSI Server has stopped after {elapsed:.1f} seconds")
+        logger.info("CSI Server has stopped", elapsed=elapsed, start=start, end=end)
 
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
@@ -83,5 +96,4 @@ def gc(dry_run):
 
 
 if __name__ == "__main__":
-    logging.basicConfig()
     cli()

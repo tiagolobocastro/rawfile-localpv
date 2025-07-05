@@ -1,39 +1,140 @@
-import time
+from datetime import datetime, timedelta
 import functools
+import sys
+import json
+from loguru import logger
+from loguru._defaults import LOGURU_FORMAT
+from enum import StrEnum
+from google.protobuf.json_format import MessageToDict
 
 
-def indent(obj, lvl):
-    return "\n".join([(lvl * " ") + line for line in str(obj).splitlines()])
+def _format_timedelta(td: timedelta):
+    total_ms = int(td.total_seconds() * 1000)
+    days, rem_ms = divmod(total_ms, 86400 * 1000)
+    hours, rem_ms = divmod(rem_ms, 3600 * 1000)
+    minutes, rem_ms = divmod(rem_ms, 60 * 1000)
+    seconds, milliseconds = divmod(rem_ms, 1000)
+
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if seconds:
+        parts.append(f"{seconds}s")
+    if milliseconds or not parts:
+        parts.append(f"{milliseconds}ms")
+
+    return " ".join(parts)
 
 
-def fmt_timestamp(ts):
-    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts))
+class _JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        elif isinstance(o, timedelta):
+            return _format_timedelta(o)
+        return super().default(o)
+
+
+class LoggingFormats(StrEnum):
+    JSON = "json"
+    PRETTY = "pretty"
+
+
+def _pretty_format(record) -> str:
+    format = str(LOGURU_FORMAT)
+    extra = record.get("extra", {})
+    if extra and len(extra.keys()):
+        format += " | {extra}"
+    if record.get("exception", None):
+        format += "\n{exception}"
+    return str(format) + "\n"
+
+
+def _json_serialize(record):
+    subset = {
+        "timestamp": record["time"],
+        "level": record["level"].name,
+        "caller": f"{record['name']}:{record['function']}:{record['line']}",
+        "message": record["message"],
+    }
+    subset.update({k: v for k, v in record["extra"].items()})
+    return json.dumps(subset, cls=_JSONEncoder)
+
+
+def _json_sink(message):
+    serialized = _json_serialize(message.record)
+    sys.stdout.write(f"{serialized}\n")
+
+
+_logging_handlers = {
+    LoggingFormats.JSON: {"sink": _json_sink},
+    LoggingFormats.PRETTY: {"sink": sys.stderr, "format": _pretty_format},
+}
+
+format = LoggingFormats.JSON
+level = "INFO"
+
+
+def init(_format: LoggingFormats, _level: str):
+    logger.remove()
+    format = _format
+    level = _level
+    logger.add(**_logging_handlers[format], level=level)
 
 
 def log_grpc_request(func):
     @functools.wraps(func)
     def wrap(self, request, context):
-        start = time.time()
+        start = datetime.now()
+        is_json = format == LoggingFormats.JSON
+        args = {
+            "handler": func.__name__,
+            "request": MessageToDict(request) if is_json else request,
+            "starttime": start,
+        }
         try:
             res = func(self, request, context)
-            end = time.time()
-            print(
-                f"""{fmt_timestamp(end)} => {func.__name__}({{
-{indent(request, 2)}
-}}) = {{
-{indent(res, 2)}
-}} <= {fmt_timestamp(end)} // {(end - start) * 1000:.2f}ms"""
+            end = datetime.now()
+            args.update(
+                {
+                    "response": MessageToDict(res) if is_json else request,
+                    "latency": end - start,
+                    "endtime": end,
+                    "success": True,
+                }
             )
+            logger.info("GRPC Server Access Log", **args)
             return res
         except Exception as exc:
-            ret = (str(context._state.code), context._state.details)
-            end = time.time()
-            print(
-                f"""{fmt_timestamp(end)} => {func.__name__}({{
-{indent(request, 2)}
-}}) = {ret} <= {fmt_timestamp(end)} // {(end - start) * 1000:.2f}ms
-"""
+            end = datetime.now()
+            args.update(
+                {
+                    "response": None,
+                    "latency": end - start,
+                    "endtime": end,
+                    "success": False,
+                    "state": {
+                        "code": {
+                            "name": context._state.code.name,
+                            "value": context._state.code.value[0],
+                            "description": context._state.code.value[1],
+                        }
+                        if context._state.code
+                        else None,
+                        "details": context._state.details.decode()
+                        if context._state.details
+                        else None,
+                    },
+                }
             )
+            logger.warning("GRPC Server Access Log", **args)
             raise exc
 
     return wrap
+
+
+__all__ = ["log_grpc_request", "logger", "init", "format"]
