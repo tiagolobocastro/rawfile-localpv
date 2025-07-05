@@ -294,7 +294,11 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
                 raise UnknownFileSystemError(device=loop_dev, volume_id=volume_id)
 
             fs.delete_snapshot(name=name)
+        except FileNotFoundError:
+            # if base is deleted, then snapshot is gone anyway
+            pass
         finally:
             if fs:
                 fs.unmount(clear_mountpoint=True)
             # TODO: detach loopdev when we get seperated loop devices
+        return csi_pb2.DeleteSnapshotResponse()
