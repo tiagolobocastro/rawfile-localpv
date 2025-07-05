@@ -354,6 +354,7 @@ def _(btrfs_pvc):
         plural="volumesnapshots",
         name=snap_name,
     )
+    wait_snapshot_deleted(snap_name)
 
 
 @when("we create a restore volume from the snapshot", target_fixture="restore_pvc")
@@ -650,3 +651,24 @@ def create_pod(name, pvc, sleep=False):
         ),
     )
     return client.CoreV1Api().create_namespaced_pod(namespace, body)
+
+
+@retry(
+    stop_max_attempt_number=200,
+    wait_fixed=100,
+)
+def wait_snapshot_deleted(name):
+    try:
+        client.CustomObjectsApi().get_namespaced_custom_object(
+            group="snapshot.storage.k8s.io",
+            version="v1",
+            namespace=namespace,
+            plural="volumesnapshots",
+            name=name,
+        )
+        message = f"Snapshot {name} not deleted yet"
+        logger.debug(message)
+        raise Exception(message)
+    except ApiException as e:
+        if e.status != 404:
+            raise e
