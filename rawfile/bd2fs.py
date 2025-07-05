@@ -267,8 +267,6 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def CreateSnapshot(self, request: csi_pb2.CreateSnapshotRequest, context):
-        fs = None
-        loop_dev = None
         file = img_file(request.source_volume_id)
         loop_dev = attach_loop(file)
         fs = from_device(loop_dev)
