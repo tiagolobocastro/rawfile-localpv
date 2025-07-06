@@ -131,7 +131,7 @@ def log_grpc_request(func):
                     },
                 }
             )
-            logger.warning("GRPC Server Access Log", **args)
+            logger.exception("GRPC Server Exception", **args)
             raise exc
 
     return wrap
