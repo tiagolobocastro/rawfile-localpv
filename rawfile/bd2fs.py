@@ -21,7 +21,7 @@ from utils.logs import log_grpc_request
 from filesystem import get_from_device_or_fallback, from_device
 from filesystem.utils import get_device_for_mountpoint
 from rawfile_servicer import check_access_type, get_access_type
-from utils.rawfile import img_file, attach_loop, AccessType, path_stats
+from utils.rawfile import img_file, attach_loop, AccessType, path_stats, detach_loops
 from filesystem.base import UnknownFileSystemError
 from utils.lock import VolLock
 
@@ -267,49 +267,56 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def CreateSnapshot(self, request: csi_pb2.CreateSnapshotRequest, context):
-        file = img_file(request.source_volume_id)
-        loop_dev = attach_loop(file)
-        fs = from_device(loop_dev)
-        if not fs:
-            raise UnknownFileSystemError(
-                device=loop_dev, volume_id=request.source_volume_id
-            )
+        with VolLock(request.source_volume_id):
+            file = img_file(request.source_volume_id)
+            loop_dev = attach_loop(file)
+            fs = from_device(loop_dev)
+            if not fs:
+                raise UnknownFileSystemError(
+                    device=loop_dev, volume_id=request.source_volume_id
+                )
+            fs.create_snapshot(name=request.name)
 
-        fs.create_snapshot(name=request.name)
-        creation_time_ns = time.time_ns()
-        snapshot_id = f"{request.source_volume_id}/{request.name}"
-        # TODO: detach loopdev when we get seperated loop devices
-        nano = 10**9
-        return csi_pb2.CreateSnapshotResponse(
-            snapshot=csi_pb2.Snapshot(
-                size_bytes=0,
-                snapshot_id=snapshot_id,
-                source_volume_id=request.source_volume_id,
-                creation_time=Timestamp(
-                    seconds=creation_time_ns // nano, nanos=creation_time_ns % nano
-                ),
-                ready_to_use=True,
+            if fs.mountpoint is None:
+                detach_loops(file)
+
+            creation_time_ns = time.time_ns()
+            snapshot_id = f"{request.source_volume_id}/{request.name}"
+            # TODO: detach loopdev when we get seperated loop devices
+            nano = 10**9
+            return csi_pb2.CreateSnapshotResponse(
+                snapshot=csi_pb2.Snapshot(
+                    size_bytes=0,
+                    snapshot_id=snapshot_id,
+                    source_volume_id=request.source_volume_id,
+                    creation_time=Timestamp(
+                        seconds=creation_time_ns // nano, nanos=creation_time_ns % nano
+                    ),
+                    ready_to_use=True,
+                )
             )
-        )
 
     @log_grpc_request
     def DeleteSnapshot(self, request: csi_pb2.DeleteSnapshotRequest, context):
-        fs = None
-        loop_dev = None
         snapshot_id = request.snapshot_id
         volume_id, name = snapshot_id.rsplit("/", 1)
 
         try:
-            file = img_file(volume_id)
+            if not img_file(volume_id).exists():
+                raise FileNotFoundError
         except FileNotFoundError:
-            # if base is deleted, then snapshot is gone anyway
-            return
+            return csi_pb2.DeleteSnapshotResponse()
 
-        loop_dev = attach_loop(file)
-        fs = from_device(loop_dev)
-        if not fs:
-            raise UnknownFileSystemError(device=loop_dev, volume_id=volume_id)
-        fs.delete_snapshot(name=name)
+        with VolLock(volume_id):
+            file = img_file(volume_id)
 
-        # TODO: detach loopdev when we get seperated loop devices
-        return csi_pb2.DeleteSnapshotResponse()
+            loop_dev = attach_loop(file)
+            fs = from_device(loop_dev)
+            if not fs:
+                raise UnknownFileSystemError(device=loop_dev, volume_id=volume_id)
+            fs.delete_snapshot(name=name)
+
+            if fs.mountpoint is None:
+                detach_loops(file)
+
+            return csi_pb2.DeleteSnapshotResponse()
