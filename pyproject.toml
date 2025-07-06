@@ -15,7 +15,6 @@ pyyaml = "^6.0.2"
 pykube-ng = "^23.6.0"
 munch = "^4.0.0"
 prometheus-client = "^0.22.1"
-btrfsutil = "==6.13"
 loguru = "^0.7.3"
 
 [tool.poetry.scripts]
