@@ -8,6 +8,7 @@ import logging
 from common.helm import HelmReleaseClient
 from common.k8s_deployer import Deployer
 from common import fixture_cleanup
+import subprocess
 
 logger = logging.getLogger(__name__)
 helm = HelmReleaseClient()
@@ -25,6 +26,11 @@ def test_create_pvcs_with_different_storage_parameters():
 @scenario("smoke.feature", "Butter FS Snapshots and Restores")
 def test_butter_fs_snapshots_and_restores():
     """Butter FS Snapshots and Restores."""
+
+
+@scenario("smoke.feature", "Deleting Snapshot of unstaged volume")
+def test_deleting_snapshot_of_unstaged_volume():
+    """Deleting Snapshot of unstaged volume."""
 
 
 @pytest.fixture(scope="module")
@@ -346,15 +352,19 @@ def _(btrfs_pvc):
         plural="volumesnapshotclasses",
         name=snap_class,
     )
-    logger.debug(f"Deleting Snapshot: {snap_name}")
-    client.CustomObjectsApi().delete_namespaced_custom_object(
-        group="snapshot.storage.k8s.io",
-        version="v1",
-        namespace=namespace,
-        plural="volumesnapshots",
-        name=snap_name,
-    )
-    wait_snapshot_deleted(snap_name)
+    try:
+        logger.debug(f"Deleting Snapshot: {snap_name}")
+        client.CustomObjectsApi().delete_namespaced_custom_object(
+            group="snapshot.storage.k8s.io",
+            version="v1",
+            namespace=namespace,
+            plural="volumesnapshots",
+            name=snap_name,
+        )
+        wait_snapshot_deleted(snap_name)
+    except ApiException as e:
+        if e.status != 404:
+            raise e
 
 
 @when("we create a restore volume from the snapshot", target_fixture="restore_pvc")
@@ -476,6 +486,25 @@ def _(btrfs_pvc, btrfs_pod):
     )
 
 
+@then("we terminate the btrfs app pod")
+def _(btrfs_pod):
+    """we terminate the btrfs app pod."""
+    pod_name = btrfs_pod.metadata.name
+    logger.info(f"Deleting btrfs POD: {pod_name}")
+    try:
+        client.CoreV1Api().delete_namespaced_pod(pod_name, namespace)
+    except ApiException as e:
+        if e.status != 404:
+            raise e
+    wait_pod_deleted(pod_name)
+
+
+@then("the volume is unstaged")
+def _(btrfs_pvc, btrfs_pod):
+    """the volume is unstaged."""
+    wait_pvc_unstaged(btrfs_pvc.metadata.uid)
+
+
 @then("we write some more data to the mount path")
 def _(btrfs_pvc, btrfs_pod):
     """we write some more data to the mount path."""
@@ -497,6 +526,27 @@ def _(btrfs_pvc, btrfs_pod):
         stdout=True,
         tty=False,
     )
+
+
+@when("we delete the snapshot")
+def _(btrfs_snap):
+    """we delete the snapshot."""
+    snap_name = btrfs_snap["metadata"]["name"]
+    logger.info(f"Deleting Snapshot: {snap_name}")
+    client.CustomObjectsApi().delete_namespaced_custom_object(
+        group="snapshot.storage.k8s.io",
+        version="v1",
+        namespace=namespace,
+        plural="volumesnapshots",
+        name=snap_name,
+    )
+
+
+@then("it should be eventually be deleted")
+def _(btrfs_snap):
+    """it should be eventually be deleted."""
+    wait_snapshot_deleted(btrfs_snap["metadata"]["name"])
+    logger.info(f"Snapshot deleted: {btrfs_snap['metadata']['name']}")
 
 
 @retry(
@@ -530,6 +580,19 @@ def wait_pvc_bound(name):
     message = f"PVC {name} not bound yet"
     logger.debug(message)
     assert pvc.status.phase == "Bound", message
+
+
+@retry(
+    stop_max_attempt_number=200,
+    wait_fixed=100,
+)
+def wait_pvc_unstaged(uid):
+    out = subprocess.getoutput("losetup -nl")
+    lines = out.splitlines()
+    devs = [line.split(":", 1)[0] for line in lines]
+    disk = f"pvc-{uid}/disk.img"
+    for dev in devs:
+        assert not dev.__contains__(disk), f"PVC {uid} still staged"
 
 
 @retry(

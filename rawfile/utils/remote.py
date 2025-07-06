@@ -1,6 +1,7 @@
 import inspect
 import base64
 import pickle
+import os
 
 from consts import D_PERMS
 from utils.lock import VolLock
@@ -74,7 +75,7 @@ def init_rawfile(volume_id, size):
 
     with VolLock(volume_id):
         img_file = Path(f"{img_dir}/disk.img")
-        if img_file.exists():
+        if img_file.exists() and os.path.getsize(img_file) >= size:
             return
         utils.rawfile.patch_metadata(
             volume_id,

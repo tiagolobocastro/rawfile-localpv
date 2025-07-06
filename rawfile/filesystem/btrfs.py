@@ -103,7 +103,9 @@ class BTRFS(FileSystemBase):
                         default_subvol_id=$(btrfs subvolume get-default "{tmp_dir}" | awk '{{print $2}}')
                         default_subvol_path=$(btrfs subvolume list -o "{tmp_dir}" | awk -v id=$default_subvol_id '$2 == id {{print $NF}}')
                         default_subvol="{tmp_dir}/$default_subvol_path"
-                        btrfs subvolume delete "{snapshot_subvol}"
+                        if [ -f "{snapshot_subvol}" ]; then
+                          btrfs subvolume delete "{snapshot_subvol}"
+                        fi
                         """,
                         check=True,
                         capture_output=True,
