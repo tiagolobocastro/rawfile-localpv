@@ -40,9 +40,10 @@ jobs:
         with:
           kvm: true
       - run: sudo chown $USER /mnt
-      - run: |
-          lsblk
-          df -h
+      - name: Erase /mnt
+        run: |
+          sudo du -ah -d 6 --apparent-size /mnt | sort -hr
+          sudo rm -rf /mnt/* || true
           sudo du -ah -d 6 --apparent-size /mnt | sort -hr
       - name: Setup Nix Path
         run: |
@@ -89,6 +90,10 @@ jobs:
         with:
           name: smoke-k8s-dump
           path: dump
+      # - name: Setup tmate session
+      #   if: ${{ failure() }}
+      #   timeout-minutes: 120
+      #   uses: mxschmitt/action-tmate@v3
 
   release-check:
     if: ${{ inputs.release-check }}
@@ -101,6 +106,11 @@ jobs:
         with:
           kvm: true
       - run: sudo chown $USER /mnt
+      - name: Erase /mnt
+        run: |
+          sudo du -ah -d 6 --apparent-size /mnt | sort -hr
+          sudo rm -rf /mnt/* || true
+          sudo du -ah -d 6 --apparent-size /mnt | sort -hr
       - name: Setup Nix Path
         run: |
           export NIX_PATH=nixpkgs=$(jq '.nixpkgs.url' nix/sources.json -r)
@@ -156,9 +166,10 @@ jobs:
         with:
           kvm: true
       - run: sudo chown $USER /mnt
-      - run: |
-          lsblk
-          df -h
+      - name: Erase /mnt
+        run: |
+          sudo du -ah -d 6 --apparent-size /mnt | sort -hr
+          sudo rm -rf /mnt/* || true
           sudo du -ah -d 6 --apparent-size /mnt | sort -hr
       - name: Setup Nix Path
         run: |
