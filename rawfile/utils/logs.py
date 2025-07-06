@@ -62,6 +62,8 @@ def _json_serialize(record):
         "message": record["message"],
     }
     subset.update({k: v for k, v in record["extra"].items()})
+    if record.get("exception", None):
+        subset["exception"] = str(record["exception"])
     return json.dumps(subset, cls=_JSONEncoder)
 
 
