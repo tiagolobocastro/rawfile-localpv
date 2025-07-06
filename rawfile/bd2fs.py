@@ -23,6 +23,7 @@ from filesystem.utils import get_device_for_mountpoint
 from rawfile_servicer import check_access_type, get_access_type
 from utils.rawfile import img_file, attach_loop, AccessType, path_stats
 from filesystem.base import UnknownFileSystemError
+from utils.lock import VolLock
 
 
 class Bd2FsIdentityServicer(csi_pb2_grpc.IdentityServicer):
@@ -52,25 +53,27 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
 
     @log_grpc_request
     def NodePublishVolume(self, request, context):
-        staging_dev = f"{request.staging_target_path}/device"
+        with VolLock(request.volume_id):
+            staging_dev = f"{request.staging_target_path}/device"
 
-        path = Path(request.target_path)
-        access_type_actions = {
-            AccessType.mount: path.mkdir,
-            AccessType.block: path.touch,
-        }
-        access_type_actions[get_access_type(request)](exist_ok=True)
-        mount(
-            device=staging_dev,
-            mountpoint=request.target_path,
-            readonly=request.readonly,
-        )
-        return csi_pb2.NodePublishVolumeResponse()
+            path = Path(request.target_path)
+            access_type_actions = {
+                AccessType.mount: path.mkdir,
+                AccessType.block: path.touch,
+            }
+            access_type_actions[get_access_type(request)](exist_ok=True)
+            mount(
+                device=staging_dev,
+                mountpoint=request.target_path,
+                readonly=request.readonly,
+            )
+            return csi_pb2.NodePublishVolumeResponse()
 
     @log_grpc_request
     def NodeUnpublishVolume(self, request, context):
-        unmount(request.target_path, clear_mountpoint=True)
-        return csi_pb2.NodeUnpublishVolumeResponse()
+        with VolLock(request.volume_id):
+            unmount(request.target_path, clear_mountpoint=True)
+            return csi_pb2.NodeUnpublishVolumeResponse()
 
     @log_grpc_request
     def NodeGetInfo(self, request, context):
@@ -78,55 +81,63 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
 
     @log_grpc_request
     def NodeStageVolume(self, request, context):
-        bd_stage_request = NodeStageVolumeRequest()
-        bd_stage_request.CopyFrom(request)
-        block_path = f"{request.staging_target_path}/block"
-        device_path = f"{request.staging_target_path}/device"
-        bd_stage_request.staging_target_path = block_path
-        Path(bd_stage_request.staging_target_path).mkdir(exist_ok=True, parents=True)
-        self.bds.NodeStageVolume(bd_stage_request, context)
+        with VolLock(request.volume_id):
+            bd_stage_request = NodeStageVolumeRequest()
+            bd_stage_request.CopyFrom(request)
+            block_path = f"{request.staging_target_path}/block"
+            device_path = f"{request.staging_target_path}/device"
+            bd_stage_request.staging_target_path = block_path
+            Path(bd_stage_request.staging_target_path).mkdir(
+                exist_ok=True, parents=True
+            )
+            self.bds.NodeStageVolume(bd_stage_request, context)
 
-        bd_publish_request = NodePublishVolumeRequest()
-        bd_publish_request.volume_id = request.volume_id
-        bd_publish_request.publish_context.update(request.publish_context)
-        bd_publish_request.staging_target_path = bd_stage_request.staging_target_path
-        bd_publish_request.target_path = device_path
-        bd_publish_request.volume_capability.CopyFrom(request.volume_capability)
-        bd_publish_request.readonly = False
-        bd_publish_request.secrets.update(request.secrets)
-        bd_publish_request.volume_context.update(request.volume_context)
+            bd_publish_request = NodePublishVolumeRequest()
+            bd_publish_request.volume_id = request.volume_id
+            bd_publish_request.publish_context.update(request.publish_context)
+            bd_publish_request.staging_target_path = (
+                bd_stage_request.staging_target_path
+            )
+            bd_publish_request.target_path = device_path
+            bd_publish_request.volume_capability.CopyFrom(request.volume_capability)
+            bd_publish_request.readonly = False
+            bd_publish_request.secrets.update(request.secrets)
+            bd_publish_request.volume_context.update(request.volume_context)
 
-        self.bds.NodePublishVolume(bd_publish_request, context)
+            self.bds.NodePublishVolume(bd_publish_request, context)
 
-        if get_access_type(request) is AccessType.mount:
-            default_fs = request.volume_capability.mount.fs_type
-            fs = get_from_device_or_fallback(bd_publish_request.target_path, default_fs)
-            fs.mountpoint = f"{request.staging_target_path}/mount"
-            fs.format_and_mount(
-                mount_options=[]
-            )  # TODO: Respect from bd_publish_request.volume_capability
+            if get_access_type(request) is AccessType.mount:
+                default_fs = request.volume_capability.mount.fs_type
+                fs = get_from_device_or_fallback(
+                    bd_publish_request.target_path, default_fs
+                )
+                fs.mountpoint = f"{request.staging_target_path}/mount"
+                fs.format_and_mount(
+                    mount_options=[]
+                )  # TODO: Respect from bd_publish_request.volume_capability
 
-        return csi_pb2.NodeStageVolumeResponse()
+            return csi_pb2.NodeStageVolumeResponse()
 
     @log_grpc_request
     def NodeUnstageVolume(self, request, context):
-        mount_path = f"{request.staging_target_path}/mount"
-        device_path = f"{request.staging_target_path}/device"
-        unmount(mount_path, clear_mountpoint=True)
+        with VolLock(request.volume_id):
+            mount_path = f"{request.staging_target_path}/mount"
+            device_path = f"{request.staging_target_path}/device"
+            unmount(mount_path, clear_mountpoint=True)
 
-        bd_unpublish_request = NodeUnpublishVolumeRequest()
-        bd_unpublish_request.volume_id = request.volume_id
-        bd_unpublish_request.target_path = device_path
-        self.bds.NodeUnpublishVolume(bd_unpublish_request, context)
+            bd_unpublish_request = NodeUnpublishVolumeRequest()
+            bd_unpublish_request.volume_id = request.volume_id
+            bd_unpublish_request.target_path = device_path
+            self.bds.NodeUnpublishVolume(bd_unpublish_request, context)
 
-        bd_unstage_request = NodeUnstageVolumeRequest()
-        bd_unstage_request.CopyFrom(request)
-        block_path = f"{request.staging_target_path}/block"
-        bd_unstage_request.staging_target_path = block_path
-        self.bds.NodeUnstageVolume(bd_unstage_request, context)
-        be_absent(bd_unstage_request.staging_target_path)
+            bd_unstage_request = NodeUnstageVolumeRequest()
+            bd_unstage_request.CopyFrom(request)
+            block_path = f"{request.staging_target_path}/block"
+            bd_unstage_request.staging_target_path = block_path
+            self.bds.NodeUnstageVolume(bd_unstage_request, context)
+            be_absent(bd_unstage_request.staging_target_path)
 
-        return csi_pb2.NodeUnstageVolumeResponse()
+            return csi_pb2.NodeUnstageVolumeResponse()
 
     # @log_grpc_request
     def NodeGetVolumeStats(self, request, context):
@@ -153,44 +164,45 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
 
     @log_grpc_request
     def NodeExpandVolume(self, request, context):
-        if get_access_type(request) is AccessType.block:
-            device_path = f"{request.staging_target_path}/device"
-            request.volume_path = device_path
-            self.bds.NodeExpandVolume(request, context)
+        with VolLock(request.volume_id):
+            if get_access_type(request) is AccessType.block:
+                device_path = f"{request.staging_target_path}/device"
+                request.volume_path = device_path
+                self.bds.NodeExpandVolume(request, context)
+                size = request.capacity_range.required_bytes
+                return csi_pb2.NodeExpandVolumeResponse(capacity_bytes=size)
+
+            # FIXME: hacky way to determine if `volume_path` is staged path,
+            # or the mount itself
+            # Based on CSI 1.4.0 specifications:
+            # > The staging_target_path field is not required,
+            # for backwards compatibility,
+            # but the CO SHOULD supply it.
+            # Apparently, k8s 1.18 does not supply it. So:
+            dev_path = get_device_for_mountpoint(request.volume_path)
+            volume_path = request.volume_path
+            if dev_path is None:
+                dev_path = f"{request.volume_path}/device"
+                volume_path = f"{request.volume_path}/mount"
+
+            bd_request = NodeExpandVolumeRequest()
+            bd_request.CopyFrom(request)
+            bd_request.volume_path = dev_path
+            self.bds.NodeExpandVolume(bd_request, context)
+
+            # Based on CSI 1.4.0 specifications:
+            # > If volume_capability is omitted the SP MAY determine
+            # > access_type from given volume_path for the volume and perform
+            # > node expansion.
+            # Apparently k8s 1.18 omits this field.
+            fs = from_device(dev_path)
+            if not fs:
+                raise UnknownFileSystemError(device=dev_path)
+            fs.mountpoint = volume_path
+            fs.resize()
+
             size = request.capacity_range.required_bytes
             return csi_pb2.NodeExpandVolumeResponse(capacity_bytes=size)
-
-        # FIXME: hacky way to determine if `volume_path` is staged path,
-        # or the mount itself
-        # Based on CSI 1.4.0 specifications:
-        # > The staging_target_path field is not required,
-        # for backwards compatibility,
-        # but the CO SHOULD supply it.
-        # Apparently, k8s 1.18 does not supply it. So:
-        dev_path = get_device_for_mountpoint(request.volume_path)
-        volume_path = request.volume_path
-        if dev_path is None:
-            dev_path = f"{request.volume_path}/device"
-            volume_path = f"{request.volume_path}/mount"
-
-        bd_request = NodeExpandVolumeRequest()
-        bd_request.CopyFrom(request)
-        bd_request.volume_path = dev_path
-        self.bds.NodeExpandVolume(bd_request, context)
-
-        # Based on CSI 1.4.0 specifications:
-        # > If volume_capability is omitted the SP MAY determine
-        # > access_type from given volume_path for the volume and perform
-        # > node expansion.
-        # Apparently k8s 1.18 omits this field.
-        fs = from_device(dev_path)
-        if not fs:
-            raise UnknownFileSystemError(device=dev_path)
-        fs.mountpoint = volume_path
-        fs.resize()
-
-        size = request.capacity_range.required_bytes
-        return csi_pb2.NodeExpandVolumeResponse(capacity_bytes=size)
 
 
 class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
@@ -237,7 +249,13 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def DeleteVolume(self, request, context):
-        return self.bds.DeleteVolume(request, context)
+        try:
+            lock = VolLock(request.volume_id)
+        except FileNotFoundError:
+            return csi_pb2.DeleteVolumeResponse()
+        else:
+            with lock:
+                return self.bds.DeleteVolume(request, context)
 
     def GetCapacity(self, request, context):
         return self.bds.GetCapacity(request, context)
@@ -286,6 +304,7 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
         loop_dev = None
         snapshot_id = request.snapshot_id
         volume_id, name = snapshot_id.rsplit("/", 1)
+
         try:
             file = img_file(volume_id)
             loop_dev = attach_loop(file)

@@ -84,7 +84,8 @@ def run_on_node(fn, node):
         exit_code = task_pod.obj["status"]["containerStatuses"][0]["state"][
             "terminated"
         ]["exitCode"]
-        raise CalledProcessError(returncode=exit_code, cmd=f"Task: {name}")
+        logger.error("run_on_node task failed", exit_code=exit_code, output=logs)
+        raise CalledProcessError(returncode=exit_code, cmd=f"Task: {name}", output=logs)
 
     match = re.search(f"{VOLUME_IS_ATTACHED}=(True|False)", logs)
     is_attached = match.group(1) == "True" if match else None

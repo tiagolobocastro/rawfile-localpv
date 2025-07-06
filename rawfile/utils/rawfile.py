@@ -99,6 +99,10 @@ def meta_file(volume_id):
     return Path(f"{img_dir(volume_id)}/disk.meta")
 
 
+def lock_file(volume_id):
+    return Path(f"{img_dir(volume_id)}/disk.lock")
+
+
 def metadata(volume_id):
     return json.loads(meta_file(volume_id).read_text())
 
@@ -119,6 +123,7 @@ def destroy(volume_id, dry_run=True):
     if not dry_run:
         Path(img_file(volume_id)).unlink(missing_ok=True)
         Path(meta_file(volume_id)).unlink(missing_ok=True)
+        Path(lock_file(volume_id)).unlink(missing_ok=True)
         try:
             Path(img_dir(volume_id)).rmdir()
         except FileNotFoundError:

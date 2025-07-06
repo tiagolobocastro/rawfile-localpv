@@ -3,6 +3,7 @@ import base64
 import pickle
 
 from consts import D_PERMS
+from utils.lock import VolLock
 
 
 class remote_fn(object):
@@ -71,20 +72,21 @@ def init_rawfile(volume_id, size):
     img_dir = utils.rawfile.img_dir(volume_id)
     img_dir.mkdir(mode=D_PERMS, exist_ok=True)
 
-    img_file = Path(f"{img_dir}/disk.img")
-    if img_file.exists():
-        return
-    utils.rawfile.patch_metadata(
-        volume_id,
-        {
-            "schema_version": LATEST_SCHEMA_VERSION,
-            "volume_id": volume_id,
-            "created_at": time.time(),
-            "img_file": img_file.as_posix(),
-            "size": size,
-        },
-    )
-    utils.rawfile.truncate(img_file, size)
+    with VolLock(volume_id):
+        img_file = Path(f"{img_dir}/disk.img")
+        if img_file.exists():
+            return
+        utils.rawfile.patch_metadata(
+            volume_id,
+            {
+                "schema_version": LATEST_SCHEMA_VERSION,
+                "volume_id": volume_id,
+                "created_at": time.time(),
+                "img_file": img_file.as_posix(),
+                "size": size,
+            },
+        )
+        utils.rawfile.truncate(img_file, size)
 
 
 def get_capacity():
@@ -126,20 +128,22 @@ def log_attached(volume_id):
 def expand_rawfile(volume_id, size):
     import utils.rawfile
     from utils.remote import log_attached
+    from utils.lock import VolLock
     from consts import RESOURCE_EXHAUSTED_EXIT_CODE
 
-    img_file = utils.rawfile.img_file(volume_id)
-    size_inc = size - utils.rawfile.metadata(volume_id)["size"]
-    if size_inc <= 0:
+    with VolLock(volume_id):
+        img_file = utils.rawfile.img_file(volume_id)
+        size_inc = size - utils.rawfile.metadata(volume_id)["size"]
+        if size_inc <= 0:
+            log_attached(volume_id)
+            return
+
+        if utils.rawfile.get_capacity() < size_inc:
+            exit(RESOURCE_EXHAUSTED_EXIT_CODE)
+
+        utils.rawfile.truncate(img_file, size)
+        utils.rawfile.patch_metadata(
+            volume_id,
+            {"size": size},
+        )
         log_attached(volume_id)
-        return
-
-    if utils.rawfile.get_capacity() < size_inc:
-        exit(RESOURCE_EXHAUSTED_EXIT_CODE)
-
-    utils.rawfile.truncate(img_file, size)
-    utils.rawfile.patch_metadata(
-        volume_id,
-        {"size": size},
-    )
-    log_attached(volume_id)
