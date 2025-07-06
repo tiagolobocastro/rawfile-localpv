@@ -62,6 +62,8 @@ def _json_serialize(record):
         "message": record["message"],
     }
     subset.update({k: v for k, v in record["extra"].items()})
+    if record.get("exception", None):
+        subset["exception"] = str(record["exception"])
     return json.dumps(subset, cls=_JSONEncoder)
 
 
@@ -131,7 +133,7 @@ def log_grpc_request(func):
                     },
                 }
             )
-            logger.warning("GRPC Server Access Log", **args)
+            logger.exception("GRPC Server Exception", **args)
             raise exc
 
     return wrap
