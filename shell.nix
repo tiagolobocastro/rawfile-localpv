@@ -6,10 +6,6 @@ in
 pkgs.mkShell {
   name = "rawfile-shell";
 
-  NIX_LD_LIBRARY_PATH = lib.makeLibraryPath [
-    pkgs.stdenv.cc.cc
-  ];
-
   buildInputs = with pkgs; [
     kubectl
     kubernetes-helm-wrapped
@@ -24,10 +20,11 @@ pkgs.mkShell {
     btrfs-progs
     stdenv.cc.cc.lib
   ] ++ pkgs.lib.optional (builtins.getEnv "IN_NIX_SHELL" == "pure") [ docker-client ];
-  NIX_LD = builtins.readFile "${stdenv.cc}/nix-support/dynamic-linker";
   shellHook = ''
-    poetry env use $(which python)
+    export LD_PRELOAD=${lib.makeLibraryPath [pkgs.stdenv.cc.cc]}/libstdc++.so.6:$LD_PRELOAD
+    poetry env use "$(which python)"
     poetry install
+    export PYTHONPATH="$(git rev-parse --show-toplevel)/rawfile:$PYTHONPATH"
     source $(poetry env info -p)/bin/activate
     if ! [ "$CI" == "1" ]; then
       pre-commit install
@@ -35,5 +32,7 @@ pkgs.mkShell {
   '';
   postShellHook = ''
     deactivate
+    unset PYTHONPATH
+    unset LD_PRELOAD
   '';
 }
