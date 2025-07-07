@@ -11,7 +11,7 @@ class VolumeStatsCollector(object):
     def collect(self):
         remaining_capacity = GaugeMetricFamily(
             "rawfile_remaining_capacity",
-            "Remaining capacity for creating new volumes on this node",
+            "Free capacity for new volumes on this node (excluding reserved storage).",
             labels=["node"],
             unit="bytes",
         )

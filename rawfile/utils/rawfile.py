@@ -8,7 +8,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from consts import D_PERMS, DATA_DIR, F_PERMS, OWNER_UMASK
+from consts import CONFIG, D_PERMS, DATA_DIR, F_PERMS, OWNER_UMASK
 from volume_schema import LATEST_SCHEMA_VERSION, migrate_to
 import os
 import subprocess
@@ -299,6 +299,11 @@ def get_capacity():
     capacity = disk_free_size
     for volume_stat in get_volumes_stats().values():
         capacity -= volume_stat["total"] - volume_stat["used"]
+    reserved_storage = CONFIG.get("reserved_storage", 0)
+    if isinstance(reserved_storage, int):
+        capacity -= CONFIG.get("reserved_storage", 0)
+    elif str(reserved_storage).endswith("%"):
+        capacity -= capacity * int(reserved_storage[:-1]) / 100
     return capacity
 
 

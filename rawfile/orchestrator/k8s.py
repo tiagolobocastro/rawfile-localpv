@@ -62,6 +62,7 @@ def run_on_node(fn, node):
         "datadir": CONFIG["node_datadir"],
         "log_format": log_format,
         "log_level": log_level,
+        "reserved_storage": CONFIG["reserved_storage"],
     }
     template = Path("./templates/task.yaml").read_bytes().decode()
     manifest = template.format(**ctx)
