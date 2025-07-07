@@ -99,6 +99,10 @@ def meta_file(volume_id):
     return Path(f"{img_dir(volume_id)}/disk.meta")
 
 
+def meta_file_tmp(volume_id):
+    return Path(f"{img_dir(volume_id)}/disk.meta.tmp")
+
+
 def lock_file(volume_id):
     return Path(f"{img_dir(volume_id)}/disk.lock")
 
@@ -157,7 +161,21 @@ def _owner_umask():
 def update_metadata(volume_id: str, obj: dict) -> dict:
     update_permissions(volume_id)
     with _owner_umask():
-        meta_file(volume_id).write_text(json.dumps(obj))
+        meta_tmp = meta_file_tmp(volume_id)
+        meta = meta_file(volume_id)
+
+        with meta_tmp.open(mode="w", encoding="utf-8") as f:
+            json.dump(obj, f)
+            f.flush()
+            os.fsync(f.fileno())
+
+        os.replace(meta_tmp, meta)
+        # fsync the directory to persist the rename
+        dir_fd = os.open(str(meta.parent), os.O_DIRECTORY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
     return obj
 
 
@@ -188,7 +206,9 @@ def truncate(img_file, size):
     Set the umask to restrict permissions to the owner only
     """
     with _owner_umask():
-        run(f"truncate -s {size} {img_file}")
+        with open(img_file, "a+b") as f:
+            f.truncate(size)
+            os.fsync(f.fileno())
 
 
 def attached_loops(file: str) -> list[str]:
