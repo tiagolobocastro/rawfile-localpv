@@ -4,11 +4,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get install -y \
-        btrfs-progs \
-        libbtrfsutil-dev \
-        e2fsprogs \
-        btrfs-progs \
-        xfsprogs
+    btrfs-progs \
+    libbtrfsutil-dev \
+    e2fsprogs \
+    btrfs-progs \
+    xfsprogs \
+    gcc
 
 FROM base AS python-base
 ENV PYTHONUNBUFFERED=1 \
@@ -27,8 +28,8 @@ ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 FROM python-base AS builder-base
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
-        curl \
-        build-essential
+    curl \
+    build-essential
 
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
@@ -43,7 +44,13 @@ COPY --from=builder-base $VENV_PATH $VENV_PATH
 COPY ./rawfile /rawfile
 WORKDIR /rawfile
 
-RUN python -m grpc_tools.protoc --proto_path=protos/ protos/csi.proto --grpc_python_out=csi/ --python_out=csi/
+RUN python -m \
+    grpc_tools.protoc \
+    --proto_path=protos/ \
+    protos/csi.proto \
+    --grpc_python_out=csi/ \
+    --python_out=csi/ && \
+    python utils/fallocate/build.py
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 
 ARG IMAGE_TAG

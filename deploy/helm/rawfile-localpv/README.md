@@ -75,6 +75,7 @@ Kubernetes: `>= 1.21`
 | storageClasses[0].fsType | string | `"ext4"` | Sets filesystem type for volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default]) |
 | storageClasses[0].name | string | `"rawfile-localpv"` | Name of the StorageClass |
 | storageClasses[0].reclaimPolicy | string | `"Delete"` | Sets default reclaimPolicy for StorageClass volumes |
+| storageClasses[0].thinProvision | bool | `false` | Enables thin provisioning of volumes |
 | storageClasses[0].volumeBindingMode | string | `"WaitForFirstConsumer"` | Sets volumeBindingMode for StorageClass |
 
 ----------------------------------------------

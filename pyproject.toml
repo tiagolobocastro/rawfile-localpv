@@ -16,6 +16,7 @@ pykube-ng = "^23.6.0"
 munch = "^4.0.0"
 prometheus-client = "^0.22.1"
 loguru = "^0.7.3"
+cffi = "^1.17.1"
 
 [tool.poetry.scripts]
 rawfile = "rawfile.rawfile:cli"

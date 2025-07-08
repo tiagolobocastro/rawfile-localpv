@@ -158,6 +158,8 @@ storageClasses:
     reclaimPolicy: Delete
     # -- Sets filesystem type for volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default])
     fsType: ext4
+    # -- Enables thin provisioning of volumes
+    thinProvision: false
 
 crds:
   # -- Disables the installation of all CRDs if set to false

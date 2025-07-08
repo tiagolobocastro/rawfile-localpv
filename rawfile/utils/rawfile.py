@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from os import umask
 from os.path import basename, dirname
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -14,6 +15,7 @@ import os
 import subprocess
 from enum import Enum
 from utils.commands import run
+from utils.fallocate import fallocate as linux_fallocate
 
 
 class UnknownDeviceForMountpointError(ValueError):
@@ -107,7 +109,7 @@ def lock_file(volume_id):
     return Path(f"{img_dir(volume_id)}/disk.lock")
 
 
-def metadata(volume_id):
+def metadata(volume_id) -> dict[str, Any]:
     return json.loads(meta_file(volume_id).read_text())
 
 
@@ -201,13 +203,24 @@ def migrate_metadata(volume_id, target_version):
 
 
 def truncate(img_file, size):
-    """Create the disk image file with the specified size.
+    """Create the disk image file with the specified size. for thin provisioning
 
     Set the umask to restrict permissions to the owner only
     """
     with _owner_umask():
         with open(img_file, "a+b") as f:
             f.truncate(size)
+            os.fsync(f.fileno())
+
+
+def fallocate(img_file, size):
+    """Create the disk image file with the specified size. for thick provisioning
+
+    Set the umask to restrict permissions to the owner only
+    """
+    with _owner_umask():
+        with open(img_file, "a+b") as f:
+            linux_fallocate(f.fileno(), 0, 0, size)
             os.fsync(f.fileno())
 
 

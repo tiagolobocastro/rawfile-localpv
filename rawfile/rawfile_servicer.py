@@ -203,7 +203,17 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
             )
 
         try:
-            (init_rawfile(volume_id=request.name, size=size),)
+            params: dict[str, str] = {
+                k.lower(): v for k, v in request.parameters.items()
+            }
+            thin_provision = params.get("thinprovision", "no")
+            init_rawfile(
+                volume_id=request.name,
+                size=size,
+                thin_provision=(
+                    str(thin_provision).lower() in ("1", "true", "t", "yes", "y")
+                ),
+            )
         except CalledProcessError as exc:
             if exc.returncode == RESOURCE_EXHAUSTED_EXIT_CODE:
                 context.abort(

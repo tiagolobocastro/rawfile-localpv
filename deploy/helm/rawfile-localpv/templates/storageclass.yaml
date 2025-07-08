@@ -11,6 +11,7 @@ volumeBindingMode: {{ $class.volumeBindingMode }}
 allowVolumeExpansion: {{ $class.allowVolumeExpansion }}
 parameters:
   csi.storage.k8s.io/fstype: {{ $class.fsType | default "ext4" }}
+  thinProvision: {{ $class.thinProvision | default "false" | toString | quote }}
 ---
 {{- end }}
 {{- end }}
