@@ -4,7 +4,7 @@ Feature: Basic Functionality
     Given a Kubernetes cluster with rawfile-localpv installed
 
   Scenario Outline: Create PVCs with different storage parameters
-    When I create a Persistent Volume Claim with <binding_mode> <access_mode> <fs_type> <volume_mode>
+    When I create a Persistent Volume Claim with <binding_mode> <access_mode> <fs_type> <volume_mode> <mount_options>
     Then the PVC should be bound if Binding mode is Immediate
     When a pod is created with the above PVC
     Then the PVC should be bound
@@ -17,13 +17,13 @@ Feature: Basic Functionality
     And the POD sees the expanded size
 
   Examples:
-    | binding_mode         | access_mode   | fs_type | volume_mode |
-    | Immediate            | ReadWriteOnce | ext4    | Filesystem  |
-    | Immediate            | ReadWriteOnce | xfs     | Filesystem  |
-    | Immediate            | ReadWriteOnce | btrfs   | Filesystem  |
-    | Immediate            | ReadWriteOnce | null    | Block       |
-    | WaitForFirstConsumer | ReadWriteOnce | ext4    | Filesystem  |
-    | WaitForFirstConsumer | ReadWriteOnce | null    | Block       |
+    | binding_mode         | access_mode   | fs_type | volume_mode | mount_options |
+    | Immediate            | ReadWriteOnce | ext4    | Filesystem  | noatime       |
+    | Immediate            | ReadWriteOnce | xfs     | Filesystem  | inode64       |
+    | Immediate            | ReadWriteOnce | btrfs   | Filesystem  | null          |
+    | Immediate            | ReadWriteOnce | null    | Block       | null          |
+    | WaitForFirstConsumer | ReadWriteOnce | ext4    | Filesystem  | null          |
+    | WaitForFirstConsumer | ReadWriteOnce | null    | Block       | null          |
 
   Scenario: Butter FS Snapshots and Restores
     Given a Persistent Volume Claim with Filesystem btrfs

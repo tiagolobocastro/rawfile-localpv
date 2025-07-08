@@ -155,6 +155,8 @@ storageClasses:
     reclaimPolicy: Delete
     # -- Sets filesystem type for volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default])
     fsType: ext4
+    # -- Sets mount options for filesystem volumes
+    mountOptions: []
 
 crds:
   # -- Disables the installation of all CRDs if set to false

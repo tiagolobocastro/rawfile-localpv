@@ -18,6 +18,24 @@ namespace = "rawfile-test"
 provisioner = "rawfile.csi.openebs.io"
 
 
+def short_pvc_name(binding_mode, access_mode, fs_type, volume_mode, mount_options):
+    bm_map = {"Immediate": "im", "WaitForFirstConsumer": "wf"}
+    am_map = {"ReadWriteOnce": "rwo", "ReadOnlyMany": "rom", "ReadWriteMany": "rwm"}
+    vm_map = {"Filesystem": "fs", "Block": "blk"}
+
+    bm = bm_map.get(binding_mode, "u")
+    am = am_map.get(access_mode, "u")
+    fs = fs_type if fs_type else "null"
+    vm = vm_map.get(volume_mode, "u")
+    mo = mount_options if mount_options and mount_options != "null" else ""
+
+    parts = [bm, am, fs, vm]
+    if mo:
+        parts.append(mo[:2])
+
+    return "-".join(parts).lower()
+
+
 @scenario("smoke.feature", "Create PVCs with different storage parameters")
 def test_create_pvcs_with_different_storage_parameters():
     """Create PVCs with different storage parameters."""
@@ -61,12 +79,12 @@ def _(cluster):
 
 @when(
     parsers.parse(
-        "I create a Persistent Volume Claim with {binding_mode} {access_mode} {fs_type} {volume_mode}"
+        "I create a Persistent Volume Claim with {binding_mode} {access_mode} {fs_type} {volume_mode} {mount_options}"
     ),
     target_fixture="pvc",
 )
-def _(binding_mode, access_mode, fs_type, volume_mode):
-    mix = f"{binding_mode}-{access_mode}-{fs_type}-{volume_mode}".lower()
+def _(binding_mode, access_mode, fs_type, volume_mode, mount_options):
+    mix = short_pvc_name(binding_mode, access_mode, fs_type, volume_mode, mount_options)
     pvc_name = f"pvc-{mix}"
     logger.info(f"Creating PVC: {pvc_name}")
 
@@ -76,6 +94,7 @@ def _(binding_mode, access_mode, fs_type, volume_mode):
         provisioner=provisioner,
         volume_binding_mode=binding_mode,
         allow_volume_expansion=True,
+        mount_options=mount_options.split(",") if mount_options != "null" else None,
         parameters={"csi.storage.k8s.io/fstype": fs_type},
     )
     stor_v1 = client.StorageV1Api()
