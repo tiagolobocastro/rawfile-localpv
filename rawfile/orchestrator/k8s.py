@@ -4,35 +4,47 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from time import sleep
 
-import pykube
 import re
 import yaml
 from datetime import datetime
 from consts import CONFIG, VOLUME_IS_ATTACHED
-from munch import Munch
+from kubernetes import client as k8s_client, config as k8s_config
 from utils.logs import logger, format as log_format, level as log_level
 
-api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+k8s_config.load_config()
 
 
 def volume_to_node(volume_id):
-    pv = pykube.PersistentVolume.objects(api).get_by_name(name=volume_id)
-    pv = Munch.fromDict(pv.obj)
-    node_name = pv.spec.nodeAffinity.required.nodeSelectorTerms[0].matchExpressions[0][
-        "values"
-    ][0]
-    expected_node_affinity = yaml.safe_load(
-        f"""
-required:
-  nodeSelectorTerms:
-  - matchExpressions:
-    - key: hostname
-      operator: In
-      values:
-      - {node_name}
-    """
+    api = k8s_client.CoreV1Api()
+    pv = api.read_persistent_volume(name=volume_id)
+    node_name = (
+        pv.spec.node_affinity.required.node_selector_terms[0]
+        .match_expressions[0]
+        .values[0]
     )
-    assert pv.spec.nodeAffinity == expected_node_affinity
+    assert all(
+        (
+            len(pv.spec.node_affinity.required.node_selector_terms) == 1,
+            len(pv.spec.node_affinity.required.node_selector_terms[0].match_expressions)
+            == 1,
+            len(
+                pv.spec.node_affinity.required.node_selector_terms[0]
+                .match_expressions[0]
+                .values
+            )
+            == 1,
+            pv.spec.node_affinity.required.node_selector_terms[0]
+            .match_expressions[0]
+            .key
+            == "hostname",
+            pv.spec.node_affinity.required.node_selector_terms[0]
+            .match_expressions[0]
+            .operator
+            == "In",
+            pv.spec.node_affinity.required.node_selector_terms[0].match_fields
+            in (None, []),
+        )
+    )
     return node_name
 
 
@@ -47,6 +59,7 @@ def wait_for(pred, desc=""):
 
 
 def run_on_node(fn, node):
+    api = k8s_client.CoreV1Api()
     name = f"task-{uuid.uuid4()}"
     registry = CONFIG["image_registry"]
     repository = CONFIG["image_repository"]
@@ -67,24 +80,28 @@ def run_on_node(fn, node):
     template = Path("./templates/task.yaml").read_bytes().decode()
     manifest = template.format(**ctx)
     obj = yaml.safe_load(manifest)
-    task_pod = pykube.Pod(api, obj)
-    task_pod.create()
+    api.create_namespaced_pod(
+        namespace=CONFIG["namespace"],
+        body=obj,
+    )
 
     def is_finished():
-        task_pod.reload()
-        status = task_pod.obj["status"]
-        if status["phase"] in ["Succeeded", "Failed"]:
+        task_pod = api.read_namespaced_pod(name=name, namespace=CONFIG["namespace"])
+        status = task_pod.status
+        if status.phase in ["Succeeded", "Failed"]:
             return True
         return False
 
     wait_for(is_finished, "task to finish")
-    logs = task_pod.logs()
-    task_pod.delete()
+    task_pod = api.read_namespaced_pod(name=name, namespace=CONFIG["namespace"])
+    status = task_pod.status
+    logs = api.read_namespaced_pod_log(
+        name=name, namespace=CONFIG["namespace"], container="task"
+    )
+    api.delete_namespaced_pod(name=name, namespace=CONFIG["namespace"])
 
-    if task_pod.obj["status"]["phase"] != "Succeeded":
-        exit_code = task_pod.obj["status"]["containerStatuses"][0]["state"][
-            "terminated"
-        ]["exitCode"]
+    if status.phase != "Succeeded":
+        exit_code = status.container_statuses[0].state.terminated.exit_code
         logger.error("run_on_node task failed", exit_code=exit_code, output=logs)
         raise CalledProcessError(returncode=exit_code, cmd=f"Task: {name}", output=logs)
 

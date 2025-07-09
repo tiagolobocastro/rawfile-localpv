@@ -8,15 +8,14 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
-grpcio-tools = "^1.73.0"
+grpcio-tools = "^1.73.1"
 grpcio = "^1.73.1"
 click = "^8.2.1"
 pyyaml = "^6.0.2"
-pykube-ng = "^23.6.0"
-munch = "^4.0.0"
 prometheus-client = "^0.22.1"
 loguru = "^0.7.3"
 cffi = "^1.17.1"
+kubernetes = "^33.1.0"
 
 [tool.poetry.scripts]
 rawfile = "rawfile.rawfile:cli"
