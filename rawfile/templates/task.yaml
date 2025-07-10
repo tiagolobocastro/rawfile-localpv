@@ -41,6 +41,8 @@ spec:
           value: {log_level}
         - name: RESERVED_STORAGE
           value: "{reserved_storage}"
+        - name: CAPACITY_OVERRIDE
+          value: "{capacity_override}"
       command:
         - /bin/sh
         - -c

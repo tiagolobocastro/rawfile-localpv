@@ -23,6 +23,7 @@ from utils.rawfile import (
     device_stats,
     mountpoint_to_dev,
 )
+from utils.units import str_to_bool
 
 NODE_NAME_TOPOLOGY_KEY = "hostname"
 
@@ -210,9 +211,7 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
             init_rawfile(
                 volume_id=request.name,
                 size=size,
-                thin_provision=(
-                    str(thin_provision).lower() in ("1", "true", "t", "yes", "y")
-                ),
+                thin_provision=str_to_bool(thin_provision),
             )
         except CalledProcessError as exc:
             if exc.returncode == RESOURCE_EXHAUSTED_EXIT_CODE:

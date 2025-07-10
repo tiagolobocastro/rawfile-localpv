@@ -76,6 +76,7 @@ def run_on_node(fn, node):
         "log_format": log_format,
         "log_level": log_level,
         "reserved_storage": CONFIG["reserved_storage"],
+        "capacity_override": CONFIG.get("capacity_override", 0),
     }
     template = Path("./templates/task.yaml").read_bytes().decode()
     manifest = template.format(**ctx)

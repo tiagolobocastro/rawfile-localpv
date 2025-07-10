@@ -25,6 +25,7 @@ from utils.units import pretty_size_to_bytes
 @click.option("--log-format", envvar="LOG_FORMAT", default=LoggingFormats.JSON)
 @click.option("--log-level", envvar="LOG_LEVEL", default="INFO")
 @click.option("--reserved-storage", envvar="RESERVED_STORAGE", default="0")
+@click.option("--capacity-override", envvar="CAPACITY_OVERRIDE", default="0")
 def cli(
     image_registry,
     image_repository,
@@ -35,6 +36,7 @@ def cli(
     log_format,
     log_level,
     reserved_storage,
+    capacity_override,
 ):
     CONFIG["image_registry"] = image_registry
     CONFIG["image_repository"] = image_repository
@@ -46,6 +48,9 @@ def cli(
         CONFIG["reserved_storage"] = pretty_size_to_bytes(reserved_storage)
     else:
         CONFIG["reserved_storage"] = reserved_storage
+    _capacity_override = pretty_size_to_bytes(capacity_override)
+    if _capacity_override:
+        CONFIG["capacity_override"] = _capacity_override
     init_logging(_format=LoggingFormats(log_format), _level=log_level)
 
 

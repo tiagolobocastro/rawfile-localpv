@@ -51,9 +51,14 @@ class AccessType(Enum):
 
 def path_stats(path):
     fs_stat = os.statvfs(path)
+
+    total = CONFIG.get("capacity_override", 0) or (fs_stat.f_frsize * fs_stat.f_blocks)
+    avail = fs_stat.f_frsize * fs_stat.f_bavail
+    usage = total - avail
+
     return {
-        "fs_size": fs_stat.f_frsize * fs_stat.f_blocks,
-        "fs_avail": fs_stat.f_frsize * fs_stat.f_bavail,
+        "fs_size": total,
+        "fs_avail": total - usage,
         "fs_files": fs_stat.f_files,
         "fs_files_avail": fs_stat.f_favail,
     }

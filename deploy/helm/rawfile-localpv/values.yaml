@@ -8,6 +8,8 @@ logFormat: json
 
 # -- Reserved storage amount on each node (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`]
 reservedStorage: 0B
+# -- Overrides total capacity of the storage (Support size values) [e.g. `50GB` or `10MiB`]
+capacityOverride: 0B
 
 global:
   # -- Default image registry for Images from DockerHub

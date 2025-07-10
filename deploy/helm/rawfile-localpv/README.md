@@ -22,6 +22,7 @@ Kubernetes: `>= 1.21`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| capacityOverride | string | `"0B"` | Overrides total capacity of the storage (Support size values) [e.g. `50GB` or `10MiB`] |
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |
 | controller.externalResizer.image.repository | string | `"sig-storage/csi-resizer"` | Image Repository for `csi-resizer` |
 | controller.externalResizer.image.tag | string | `"v1.13.2"` | Image tag for `csi-resizer` |
