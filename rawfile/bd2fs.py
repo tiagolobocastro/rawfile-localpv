@@ -66,6 +66,7 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
                 device=staging_dev,
                 mountpoint=request.target_path,
                 readonly=request.readonly,
+                options=request.volume_capability.mount.mount_flags or [],
             )
             return csi_pb2.NodePublishVolumeResponse()
 

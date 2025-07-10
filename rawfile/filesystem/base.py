@@ -211,8 +211,9 @@ class FileSystem(ABC, metaclass=ABCMeta):
             )
         try:
             Path(mountpoint).mkdir(exist_ok=True)
+            opt_str = f"-o {','.join(options)} " if len(options) else ""
             output = run(
-                f"mount -t {self.__filesystem__} {' '.join(options)} {self.device} {mountpoint}",
+                f"mount -t {self.__filesystem__} {opt_str}{self.device} {mountpoint}",
                 check=True,
                 capture_output=True,
             )
