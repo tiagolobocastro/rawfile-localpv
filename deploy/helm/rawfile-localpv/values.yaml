@@ -160,6 +160,8 @@ storageClasses:
     fsType: ext4
     # -- Enables thin provisioning of volumes
     thinProvision: false
+    # -- Sets mount options for filesystem volumes
+    mountOptions: []
 
 crds:
   # -- Disables the installation of all CRDs if set to false

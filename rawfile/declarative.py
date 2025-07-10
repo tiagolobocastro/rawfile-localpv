@@ -7,11 +7,13 @@ from utils.rawfile import (
     UnknownDeviceForMountpointError,
 )
 from utils.commands import run
+from copy import deepcopy
 
 
-def mount(device, mountpoint, readonly=False):
+def mount(device, mountpoint, readonly=False, options: list[str] = []):
     current_dev = get_device_for_mountpoint(mountpoint)
     device = Path(device).resolve().as_posix()
+    _options = deepcopy(options)
 
     if current_dev:
         current_dev = Path(current_dev).resolve().as_posix()
@@ -20,23 +22,22 @@ def mount(device, mountpoint, readonly=False):
         raise InvalidDeviceForMountpointError(device=current_dev, mountpoint=mountpoint)
 
     if Path(mountpoint).resolve().is_file():
-        opts = ["bind"]
+        _options.append("bind")
         # TODO: this is not sufficient,
         # we need to create a separate loop device for RO
         if readonly:
-            opts.append("ro")
-        opts_str = ",".join(opts)
+            _options.append("ro")
+        opts_str = ",".join(_options)
         run(f"mount -t none -o {opts_str} {device} {mountpoint}")
         return
     fs = from_device(device)
     if not fs:
         raise UnknownFileSystemError(device=device)
     fs.mountpoint = mountpoint
-    options = []
     # FIXME: RO mount for filesystems ignored (https://github.com/openebs/rawfile-localpv/pull/86#issuecomment-3000864823)
     # if readonly:
-    #     options.extend(["-o", "ro"])
-    fs.mount(options=options)
+    #     _options.extend(["ro"])
+    fs.mount(options=_options)
 
 
 def unmount(mountpoint: str, clear_mountpoint=True):
