@@ -322,7 +322,7 @@ def get_capacity():
         capacity -= CONFIG.get("reserved_storage", 0)
     elif str(reserved_storage).endswith("%"):
         capacity -= capacity * int(reserved_storage[:-1]) / 100
-    return capacity
+    return max(capacity, 0)
 
 
 def be_absent(path):
