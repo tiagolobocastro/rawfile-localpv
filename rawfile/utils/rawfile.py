@@ -7,15 +7,15 @@ from os.path import basename, dirname
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
+from utils.logs import logger
 
 from consts import CONFIG, D_PERMS, DATA_DIR, F_PERMS, OWNER_UMASK
 from volume_schema import LATEST_SCHEMA_VERSION, migrate_to
 import os
-import subprocess
 from enum import Enum
 from utils.commands import run
 from utils.fallocate import fallocate as linux_fallocate
+import subprocess
 
 
 class UnknownDeviceForMountpointError(ValueError):
@@ -59,6 +59,7 @@ def path_stats(path, capacity_override: int = 0):
     return {
         "fs_size": total,
         "fs_avail": total - usage,
+        "fs_usage": usage,
         "fs_files": fs_stat.f_files,
         "fs_files_avail": fs_stat.f_favail,
     }
@@ -72,10 +73,10 @@ def device_stats(dev):
     return {"dev_size": dev_size}
 
 
-def dev_to_mountpoint(dev_name):
+def device_to_mountpoint(device: str) -> None | str:
     try:
         output = run(
-            f"findmnt --json --first-only {dev_name}",
+            f"findmnt --json --first-only {device}",
             check=True,
             capture_output=True,
         ).stdout.decode()
@@ -302,10 +303,16 @@ def get_volumes_stats() -> dict[str, dict[str, int]]:
     for volume_id in list_all_volumes():
         try:
             file = img_file(volume_id=volume_id)
-            stats = file.stat()
+            loop_devs = attached_loops(file.as_posix())
+            if not (loop_devs and len(loop_devs)):
+                continue
+            mountpoint = device_to_mountpoint(loop_devs[0])
+            if not mountpoint:
+                continue
+            stats = path_stats(mountpoint)
             volumes_stats[volume_id] = {
-                "used": stats.st_blocks * 512,
-                "total": stats.st_size,
+                "used": stats["fs_usage"],
+                "total": stats["fs_size"],
             }
         except FileNotFoundError:
             pass

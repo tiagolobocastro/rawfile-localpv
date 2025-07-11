@@ -4,9 +4,7 @@ from .ext4 import EXT4
 from .btrfs import BTRFS
 from .xfs import XFS
 from .utils import get_device_fs
-from utils.commands import run
-import subprocess
-import json
+from utils.rawfile import device_to_mountpoint
 from collections import defaultdict
 from consts import CONFIG
 
@@ -22,19 +20,6 @@ filesystems: dict[FileSystemName | None, type[FileSystemBase]] = {
     FileSystemName.BTRFS: BTRFS,
     FileSystemName.XFS: XFS,
 }
-
-
-def device_to_mountpoint(device: str) -> None | str:
-    try:
-        output = run(
-            f"findmnt --json --first-only {device}",
-            check=True,
-            capture_output=True,
-        ).stdout.decode()
-        data = json.loads(output)
-        return data["filesystems"][0]["target"]
-    except subprocess.CalledProcessError:
-        return None
 
 
 def from_device(device: str) -> FileSystemBase | None:
