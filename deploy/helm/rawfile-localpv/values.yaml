@@ -6,9 +6,9 @@ logLevel: INFO
 # -- Format of the logs (json, pretty)
 logFormat: json
 
-# -- Reserved storage amount on each node (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`]
+# -- Reserved storage amount on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`]
 reservedStorage: 0B
-# -- Overrides total capacity of the storage (Support size values) [e.g. `50GB` or `10MiB`]
+# -- Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`]
 capacityOverride: 0B
 
 global:
