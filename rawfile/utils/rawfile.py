@@ -319,11 +319,11 @@ def get_capacity():
     capacity = disk_free_size
     for volume_stat in get_volumes_stats().values():
         capacity -= volume_stat["total"] - volume_stat["used"]
-    reserved_storage = CONFIG.get("reserved_storage", 0)
-    if isinstance(reserved_storage, int):
-        capacity -= CONFIG.get("reserved_storage", 0)
-    elif str(reserved_storage).endswith("%"):
-        capacity -= capacity * int(reserved_storage[:-1]) / 100
+    reserved_capacity = CONFIG.get("reserved_capacity", 0)
+    if isinstance(reserved_capacity, int):
+        capacity -= CONFIG.get("reserved_capacity", 0)
+    elif str(reserved_capacity).endswith("%"):
+        capacity -= capacity * int(reserved_capacity[:-1]) / 100
     return max(capacity, 0)
 
 

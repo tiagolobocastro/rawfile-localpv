@@ -75,7 +75,7 @@ def run_on_node(fn, node):
         "datadir": CONFIG["node_datadir"],
         "log_format": log_format,
         "log_level": log_level,
-        "reserved_storage": CONFIG["reserved_storage"],
+        "reserved_capacity": CONFIG["reserved_capacity"],
         "capacity_override": CONFIG.get("capacity_override", 0),
     }
     template = Path("./templates/task.yaml").read_bytes().decode()

@@ -24,7 +24,7 @@ from utils.units import pretty_size_to_bytes
 @click.option("--default-fs", envvar="DEFAULT_FS", default="ext4")
 @click.option("--log-format", envvar="LOG_FORMAT", default=LoggingFormats.JSON)
 @click.option("--log-level", envvar="LOG_LEVEL", default="INFO")
-@click.option("--reserved-storage", envvar="RESERVED_STORAGE", default="0")
+@click.option("--reserved-capacity", envvar="RESERVED_CAPACITY", default="0")
 @click.option("--capacity-override", envvar="CAPACITY_OVERRIDE", default="0")
 def cli(
     image_registry,
@@ -35,7 +35,7 @@ def cli(
     default_fs,
     log_format,
     log_level,
-    reserved_storage,
+    reserved_capacity,
     capacity_override,
 ):
     CONFIG["image_registry"] = image_registry
@@ -44,10 +44,10 @@ def cli(
     CONFIG["node_datadir"] = node_datadir
     CONFIG["namespace"] = namespace
     CONFIG["default_fs"] = FileSystemName(default_fs)
-    if not reserved_storage.endswith("%"):
-        CONFIG["reserved_storage"] = pretty_size_to_bytes(reserved_storage)
+    if not reserved_capacity.endswith("%"):
+        CONFIG["reserved_capacity"] = pretty_size_to_bytes(reserved_capacity)
     else:
-        CONFIG["reserved_storage"] = reserved_storage
+        CONFIG["reserved_capacity"] = reserved_capacity
     _capacity_override = pretty_size_to_bytes(capacity_override)
     if _capacity_override:
         CONFIG["capacity_override"] = _capacity_override

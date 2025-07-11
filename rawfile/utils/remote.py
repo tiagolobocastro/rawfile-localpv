@@ -23,7 +23,7 @@ import os
 from utils.logs import LoggingFormats, init as init_logging, logger
 from consts import CONFIG
 
-CONFIG["reserved_storage"] = int(os.getenv("RESERVED_STORAGE", "0"))
+CONFIG["reserved_capacity"] = int(os.getenv("reserved_capacity", "0"))
 CONFIG["capacity_override"] = int(os.getenv("CAPACITY_OVERRIDE", "0"))
 
 init_logging(LoggingFormats(os.getenv("LOG_FORMAT")), os.getenv("LOG_LEVEL"))

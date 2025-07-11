@@ -22,7 +22,7 @@ Kubernetes: `>= 1.21`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| capacityOverride | string | `"0B"` | Overrides total capacity of the storage (Support size values) [e.g. `50GB` or `10MiB`] |
+| capacityOverride | string | `""` | Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`] |
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |
 | controller.externalResizer.image.repository | string | `"sig-storage/csi-resizer"` | Image Repository for `csi-resizer` |
 | controller.externalResizer.image.tag | string | `"v1.13.2"` | Image tag for `csi-resizer` |
@@ -70,7 +70,7 @@ Kubernetes: `>= 1.21`
 | node.snapshotController.image.tag | string | `"v8.2.1"` | Image Tag for `snapshot-controller` |
 | node.tolerations | string | `nil` | Tolerations for node component |
 | provisionerName | string | `"rawfile.csi.openebs.io"` | Name of the registered CSI Driver in the cluster |
-| reservedStorage | string | `"0B"` | Reserved storage amount on each node (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`] |
+| reservedCapacity | string | `""` | Used to reserve capacity on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`] |
 | storageClasses[0].allowVolumeExpansion | bool | `true` | volumes are able to expand/resize or not? |
 | storageClasses[0].enabled | bool | `true` | Enable or disable StorageClass |
 | storageClasses[0].fsType | string | `"ext4"` | Sets filesystem type for volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default]) |

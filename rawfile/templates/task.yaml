@@ -39,8 +39,8 @@ spec:
           value: {log_format}
         - name: LOG_LEVEL
           value: {log_level}
-        - name: RESERVED_STORAGE
-          value: "{reserved_storage}"
+        - name: reserved_capacity
+          value: "{reserved_capacity}"
         - name: CAPACITY_OVERRIDE
           value: "{capacity_override}"
       command:
