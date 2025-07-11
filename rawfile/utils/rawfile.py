@@ -49,10 +49,10 @@ class AccessType(Enum):
     block = 2
 
 
-def path_stats(path):
+def path_stats(path, capacity_override: int = 0):
     fs_stat = os.statvfs(path)
 
-    total = CONFIG.get("capacity_override", 0) or (fs_stat.f_frsize * fs_stat.f_blocks)
+    total = capacity_override or (fs_stat.f_frsize * fs_stat.f_blocks)
     avail = fs_stat.f_frsize * fs_stat.f_bavail
     usage = total - avail
 
@@ -313,7 +313,9 @@ def get_volumes_stats() -> dict[str, dict[str, int]]:
 
 
 def get_capacity():
-    disk_free_size = path_stats(DATA_DIR)["fs_avail"]
+    disk_free_size = path_stats(DATA_DIR, CONFIG.get("capacity_override", 0))[
+        "fs_avail"
+    ]
     capacity = disk_free_size
     for volume_stat in get_volumes_stats().values():
         capacity -= volume_stat["total"] - volume_stat["used"]
