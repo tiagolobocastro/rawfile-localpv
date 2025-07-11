@@ -7,9 +7,9 @@ logLevel: INFO
 logFormat: json
 
 # -- Reserved storage amount on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`]
-reservedStorage: 0B
+reservedStorage: ""
 # -- Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`]
-capacityOverride: 0B
+capacityOverride: ""
 
 global:
   # -- Default image registry for Images from DockerHub
