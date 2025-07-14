@@ -5,15 +5,17 @@ from contextlib import contextmanager
 from os import umask
 from os.path import basename, dirname
 from pathlib import Path
+from typing import Any
 
-from loguru import logger
+from utils.logs import logger
 
-from consts import D_PERMS, DATA_DIR, F_PERMS, OWNER_UMASK
+from consts import CONFIG, D_PERMS, DATA_DIR, F_PERMS, OWNER_UMASK
 from volume_schema import LATEST_SCHEMA_VERSION, migrate_to
 import os
-import subprocess
 from enum import Enum
 from utils.commands import run
+from utils.fallocate import fallocate as linux_fallocate
+import subprocess
 
 
 class UnknownDeviceForMountpointError(ValueError):
@@ -47,11 +49,17 @@ class AccessType(Enum):
     block = 2
 
 
-def path_stats(path):
+def path_stats(path, capacity_override: int = 0):
     fs_stat = os.statvfs(path)
+
+    total = capacity_override or (fs_stat.f_frsize * fs_stat.f_blocks)
+    avail = fs_stat.f_frsize * fs_stat.f_bavail
+    usage = total - avail
+
     return {
-        "fs_size": fs_stat.f_frsize * fs_stat.f_blocks,
-        "fs_avail": fs_stat.f_frsize * fs_stat.f_bavail,
+        "fs_size": total,
+        "fs_avail": total - usage,
+        "fs_usage": usage,
         "fs_files": fs_stat.f_files,
         "fs_files_avail": fs_stat.f_favail,
     }
@@ -65,10 +73,10 @@ def device_stats(dev):
     return {"dev_size": dev_size}
 
 
-def dev_to_mountpoint(dev_name):
+def device_to_mountpoint(device: str) -> None | str:
     try:
         output = run(
-            f"findmnt --json --first-only {dev_name}",
+            f"findmnt --json --first-only {device}",
             check=True,
             capture_output=True,
         ).stdout.decode()
@@ -107,7 +115,7 @@ def lock_file(volume_id):
     return Path(f"{img_dir(volume_id)}/disk.lock")
 
 
-def metadata(volume_id):
+def metadata(volume_id) -> dict[str, Any]:
     return json.loads(meta_file(volume_id).read_text())
 
 
@@ -201,13 +209,24 @@ def migrate_metadata(volume_id, target_version):
 
 
 def truncate(img_file, size):
-    """Create the disk image file with the specified size.
+    """Create the disk image file with the specified size. for thin provisioning
 
     Set the umask to restrict permissions to the owner only
     """
     with _owner_umask():
         with open(img_file, "a+b") as f:
             f.truncate(size)
+            os.fsync(f.fileno())
+
+
+def fallocate(img_file, size):
+    """Create the disk image file with the specified size. for thick provisioning
+
+    Set the umask to restrict permissions to the owner only
+    """
+    with _owner_umask():
+        with open(img_file, "a+b") as f:
+            linux_fallocate(f.fileno(), 0, 0, size)
             os.fsync(f.fileno())
 
 
@@ -284,10 +303,16 @@ def get_volumes_stats() -> dict[str, dict[str, int]]:
     for volume_id in list_all_volumes():
         try:
             file = img_file(volume_id=volume_id)
-            stats = file.stat()
+            loop_devs = attached_loops(file.as_posix())
+            if not (loop_devs and len(loop_devs)):
+                continue
+            mountpoint = device_to_mountpoint(loop_devs[0])
+            if not mountpoint:
+                continue
+            stats = path_stats(mountpoint)
             volumes_stats[volume_id] = {
-                "used": stats.st_blocks * 512,
-                "total": stats.st_size,
+                "used": stats["fs_usage"],
+                "total": stats["fs_size"],
             }
         except FileNotFoundError:
             pass
@@ -295,11 +320,18 @@ def get_volumes_stats() -> dict[str, dict[str, int]]:
 
 
 def get_capacity():
-    disk_free_size = path_stats(DATA_DIR)["fs_avail"]
+    disk_free_size = path_stats(DATA_DIR, CONFIG.get("capacity_override", 0))[
+        "fs_avail"
+    ]
     capacity = disk_free_size
     for volume_stat in get_volumes_stats().values():
         capacity -= volume_stat["total"] - volume_stat["used"]
-    return capacity
+    reserved_capacity = CONFIG.get("reserved_capacity", 0)
+    if isinstance(reserved_capacity, int):
+        capacity -= CONFIG.get("reserved_capacity", 0)
+    elif str(reserved_capacity).endswith("%"):
+        capacity -= capacity * int(reserved_capacity[:-1]) / 100
+    return max(capacity, 0)
 
 
 def be_absent(path):

@@ -13,6 +13,7 @@ mountOptions:
   {{- toYaml ($class.mountOptions | default (list)) | nindent 2 }}
 parameters:
   csi.storage.k8s.io/fstype: {{ $class.fsType | default "ext4" }}
+  thinProvision: {{ $class.thinProvision | default "false" | toString | quote }}
 ---
 {{- end }}
 {{- end }}

@@ -46,6 +46,10 @@ spec:
               value: {{ .Values.logLevel }}
             - name: LOG_FORMAT
               value: {{ .Values.logFormat }}
+            - name: RESERVED_CAPACITY
+              value: {{ .Values.reservedCapacity | toString | quote }}
+            - name: CAPACITY_OVERRIDE
+              value: {{ .Values.capacityOverride | toString | quote }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

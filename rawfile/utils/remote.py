@@ -21,6 +21,10 @@ import base64
 import pickle
 import os
 from utils.logs import LoggingFormats, init as init_logging, logger
+from consts import CONFIG
+
+CONFIG["reserved_capacity"] = int(os.getenv("reserved_capacity", "0"))
+CONFIG["capacity_override"] = int(os.getenv("CAPACITY_OVERRIDE", "0"))
 
 init_logging(LoggingFormats(os.getenv("LOG_FORMAT")), os.getenv("LOG_LEVEL"))
 remote_fn = lambda fn: fn # FIXME: dirty hack
@@ -58,7 +62,7 @@ def scrub(volume_id):
     utils.rawfile.gc_if_needed(volume_id, dry_run=False)
 
 
-def init_rawfile(volume_id, size):
+def init_rawfile(volume_id, size, thin_provision=False):
     import time
     from pathlib import Path
     from subprocess import CalledProcessError
@@ -85,9 +89,13 @@ def init_rawfile(volume_id, size):
                 "created_at": time.time(),
                 "img_file": img_file.as_posix(),
                 "size": size,
+                "thin_provision": thin_provision,
             },
         )
-        utils.rawfile.truncate(img_file, size)
+        if thin_provision:
+            utils.rawfile.truncate(img_file, size)
+            return
+        utils.rawfile.fallocate(img_file, size)
 
 
 def get_capacity():
@@ -141,8 +149,10 @@ def expand_rawfile(volume_id, size):
 
         if utils.rawfile.get_capacity() < size_inc:
             exit(RESOURCE_EXHAUSTED_EXIT_CODE)
-
-        utils.rawfile.truncate(img_file, size)
+        if utils.rawfile.metadata(volume_id).get("thin_provision", False):
+            utils.rawfile.truncate(img_file, size)
+        else:
+            utils.rawfile.fallocate(img_file, size)
         utils.rawfile.patch_metadata(
             volume_id,
             {"size": size},

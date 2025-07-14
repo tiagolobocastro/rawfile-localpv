@@ -12,6 +12,7 @@ from csi import csi_pb2_grpc
 from metrics import expose_metrics
 from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
 from utils.logs import LoggingFormats, init as init_logging, logger
+from utils.units import pretty_size_to_bytes
 
 
 @click.group()
@@ -23,6 +24,8 @@ from utils.logs import LoggingFormats, init as init_logging, logger
 @click.option("--default-fs", envvar="DEFAULT_FS", default="ext4")
 @click.option("--log-format", envvar="LOG_FORMAT", default=LoggingFormats.JSON)
 @click.option("--log-level", envvar="LOG_LEVEL", default="INFO")
+@click.option("--reserved-capacity", envvar="RESERVED_CAPACITY", default="0")
+@click.option("--capacity-override", envvar="CAPACITY_OVERRIDE", default="0")
 def cli(
     image_registry,
     image_repository,
@@ -32,6 +35,8 @@ def cli(
     default_fs,
     log_format,
     log_level,
+    reserved_capacity,
+    capacity_override,
 ):
     CONFIG["image_registry"] = image_registry
     CONFIG["image_repository"] = image_repository
@@ -39,6 +44,13 @@ def cli(
     CONFIG["node_datadir"] = node_datadir
     CONFIG["namespace"] = namespace
     CONFIG["default_fs"] = FileSystemName(default_fs)
+    if not reserved_capacity.endswith("%"):
+        CONFIG["reserved_capacity"] = pretty_size_to_bytes(reserved_capacity)
+    else:
+        CONFIG["reserved_capacity"] = reserved_capacity
+    _capacity_override = pretty_size_to_bytes(capacity_override)
+    if _capacity_override:
+        CONFIG["capacity_override"] = _capacity_override
     init_logging(_format=LoggingFormats(log_format), _level=log_level)
 
 

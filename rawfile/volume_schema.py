@@ -1,6 +1,7 @@
 import sys
+from typing import Final
 
-LATEST_SCHEMA_VERSION = 3  # type: int
+LATEST_SCHEMA_VERSION: Final[int] = 4
 
 
 def migrate_0_to_1(data: dict) -> dict:
@@ -20,6 +21,12 @@ def migrate_2_to_3(data: dict) -> dict:
     if deleted_at is not None:
         gc_at = deleted_at + 7 * 24 * 60 * 60
         data["gc_at"] = gc_at
+    return data
+
+
+def migrate_3_to_4(data: dict) -> dict:
+    data["schema_version"] = 4
+    data["thin_provision"] = True
     return data
 
 
