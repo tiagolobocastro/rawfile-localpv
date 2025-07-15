@@ -29,7 +29,11 @@ def reuse_cluster():
     reuse = os.getenv("REUSE_CLUSTER")
     # By default, we try to reuse
     if reuse is None or reuse.lower() in ("yes", "true", "y", "1"):
-        cluster = common.run("kind", ["get", "clusters"], log_run=False)
+        clusters = common.run("kind", ["get", "clusters"], log_run=False)
         # todo: use config from ours, rather than allow only ours
-        return cluster == "rawfile"
+        if clusters.__contains__("rawfile"):
+            cluster = common.run(
+                "kubectl", ["config", "current-context"], log_run=False
+            )
+            return cluster == "kind-rawfile"
     return False
