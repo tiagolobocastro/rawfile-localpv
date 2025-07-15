@@ -1,3 +1,6 @@
+from typing import Any
+
+
 def pretty_size_to_bytes(pretty_size: str):
     """
     Converts a human-readable size string (e.g., "2GB", "500MB", "1.5KB", "5GiB")
@@ -35,3 +38,7 @@ def str_to_bool(value: str | None) -> bool:
     if value:
         return value.lower() in ("1", "t", "true", "yes", "y", "on")
     return False
+
+
+def normalize_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
+    return {k.lower(): v for k, v in parameters.items()}

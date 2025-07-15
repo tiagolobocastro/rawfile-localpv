@@ -21,7 +21,14 @@ from utils.logs import log_grpc_request
 from filesystem import get_from_device_or_fallback, from_device
 from filesystem.utils import get_device_for_mountpoint
 from rawfile_servicer import check_access_type, get_access_type
-from utils.rawfile import img_file, attach_loop, AccessType, path_stats, detach_loops
+from utils.rawfile import (
+    img_file,
+    attach_loop,
+    AccessType,
+    path_stats,
+    detach_loops,
+    metadata_or,
+)
 from filesystem.base import UnknownFileSystemError
 from utils.lock import VolLock
 
@@ -114,8 +121,12 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
                 )
                 fs.mountpoint = f"{request.staging_target_path}/mount"
                 fs.format_and_mount(
-                    mount_options=[]
-                )  # TODO: Respect from bd_publish_request.volume_capability
+                    mount_options=bd_publish_request.volume_capability.mount.mount_flags
+                    or [],
+                    format_options=metadata_or(bd_publish_request.volume_id).get(
+                        "format_options", []
+                    ),
+                )
 
             return csi_pb2.NodeStageVolumeResponse()
 

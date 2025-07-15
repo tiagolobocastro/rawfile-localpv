@@ -23,7 +23,7 @@ from utils.rawfile import (
     device_stats,
     mountpoint_to_dev,
 )
-from utils.units import str_to_bool
+from utils.units import normalize_parameters, str_to_bool
 
 NODE_NAME_TOPOLOGY_KEY = "hostname"
 
@@ -204,14 +204,14 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
             )
 
         try:
-            params: dict[str, str] = {
-                k.lower(): v for k, v in request.parameters.items()
-            }
+            params = normalize_parameters(request.parameters.items())
             thin_provision = params.get("thinprovision", "no")
+            format_options = params.get("formatoptions", "")
             init_rawfile(
                 volume_id=request.name,
                 size=size,
                 thin_provision=str_to_bool(thin_provision),
+                format_options=format_options.split(" "),
             )
         except CalledProcessError as exc:
             if exc.returncode == RESOURCE_EXHAUSTED_EXIT_CODE:
