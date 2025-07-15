@@ -4,6 +4,7 @@ from subprocess import CalledProcessError
 import grpc
 import utils.rawfile
 from consts import (
+    FORMAT_OPTIONS_KEY,
     PROVISIONER_NAME,
     PROVISIONER_VERSION,
     RESOURCE_EXHAUSTED_EXIT_CODE,
@@ -203,15 +204,14 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
                 grpc.StatusCode.INVALID_ARGUMENT, "Topology key not found... why?"
             )
 
+        params = normalize_parameters(request.parameters)
+        thin_provision = params.get("thinprovision", "no")
+        format_options = params.get("formatoptions", "").strip()
         try:
-            params = normalize_parameters(request.parameters.items())
-            thin_provision = params.get("thinprovision", "no")
-            format_options = params.get("formatoptions", "")
             init_rawfile(
                 volume_id=request.name,
                 size=size,
                 thin_provision=str_to_bool(thin_provision),
-                format_options=format_options.split(" "),
             )
         except CalledProcessError as exc:
             if exc.returncode == RESOURCE_EXHAUSTED_EXIT_CODE:
@@ -224,6 +224,7 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
         return csi_pb2.CreateVolumeResponse(
             volume=csi_pb2.Volume(
                 volume_id=request.name,
+                volume_context={FORMAT_OPTIONS_KEY: format_options},
                 capacity_bytes=size,
                 accessible_topology=[
                     csi_pb2.Topology(segments={NODE_NAME_TOPOLOGY_KEY: node_name})

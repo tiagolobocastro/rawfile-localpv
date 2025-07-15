@@ -73,6 +73,7 @@ Kubernetes: `>= 1.21`
 | reservedCapacity | string | `""` | Used to reserve capacity on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`] |
 | storageClasses[0].allowVolumeExpansion | bool | `true` | volumes are able to expand/resize or not? |
 | storageClasses[0].enabled | bool | `true` | Enable or disable StorageClass |
+| storageClasses[0].formatOptions | list | `[]` | Sets format options for filesystem volumes |
 | storageClasses[0].fsType | string | `"ext4"` | Sets filesystem type for volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default]) |
 | storageClasses[0].mountOptions | list | `[]` | Sets mount options for filesystem volumes |
 | storageClasses[0].name | string | `"rawfile-localpv"` | Name of the StorageClass |

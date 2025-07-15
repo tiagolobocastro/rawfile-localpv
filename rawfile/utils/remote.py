@@ -62,7 +62,7 @@ def scrub(volume_id):
     utils.rawfile.gc_if_needed(volume_id, dry_run=False)
 
 
-def init_rawfile(volume_id, size, thin_provision=False, format_options=[]):
+def init_rawfile(volume_id, size, thin_provision=False):
     import time
     from pathlib import Path
     from subprocess import CalledProcessError
@@ -90,7 +90,6 @@ def init_rawfile(volume_id, size, thin_provision=False, format_options=[]):
                 "img_file": img_file.as_posix(),
                 "size": size,
                 "thin_provision": thin_provision,
-                "format_options": format_options,
             },
         )
         if thin_provision:
