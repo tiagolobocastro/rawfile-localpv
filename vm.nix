@@ -20,7 +20,7 @@ in
         target = ./.;
         cache = "none";
       };
-      "/terminfo" = {
+      ${if (builtins.getEnv "TERMINFO" != "") then "/terminfo" else null } = {
         target = builtins.getEnv "TERMINFO";
       };
     };
