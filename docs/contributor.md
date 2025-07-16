@@ -16,7 +16,7 @@ Rawfile is a sub-project of [OpenEBS][github-openebs], so don't forget to checko
     - [kind](#kind)
     - [NixOs-Shell Virtual Machine](#nixos-shell-virtual-machine)
   - [Installing](#installing)
-    - [Oficial helm package](#oficial-helm-package)
+    - [Official helm package](#official-helm-package)
     - [Local](#local)
   - [Testing](#testing)
     - [BDD tests](#bdd-tests)
@@ -24,7 +24,7 @@ Rawfile is a sub-project of [OpenEBS][github-openebs], so don't forget to checko
   - [Commiting Code](#commiting-code)
   - [CI](#ci)
     - [GitHub Actions](#github-actions)
-      - [🚀 Mergify IO Commands](#-mergify-io-commands)
+    - [🚀 Mergify IO Commands](#-mergify-io-commands)
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ You need to have a docker service installed on your local host/development machi
 The host/development machine must also run a local single node kubernetes cluster in order to run the ci tests.
 But don't worry if this is not possible, raising a PR with the rawfile-locapv repository will run the tests for your changes against a [kind] cluster.
 
-> _**NOTE**_
+> [!NOTE]
 > If you don't have docker installed, you may use the virtual machine through nixos-shell which comes
 > packaged with docker and a kubernetes K3 cluster.
 > More details on this later.
@@ -83,7 +83,8 @@ You can run `rawfile` directly if you want to:
 > ...
 ```
 
-> _**NOTE**_: you can keep using your favorite shell by running it, example: `nix-shell --run zsh`.
+> [!TIP]
+You can keep using your favorite shell by running it, example: `nix-shell --run zsh`.
 
 ## Building the images
 
@@ -141,7 +142,7 @@ Now that you are familiar with [nix], you should now that most scripts have depe
 the [nix] development shell, so you don't need to worry about it.
 From now on you should assume that you must enter the `nix-shell` for every script or command.
 
-> _**NOTE**_
+> [!NOTE]
 > If the [kind] test cluster is up, the images will be automatically pushed
 
 ## Deploying to K8s
@@ -337,7 +338,8 @@ rawfile-localpv-controller-0   2/2     Running   0          26s   10.244.1.3   r
 rawfile-localpv-node-8xscw     5/5     Running   0          26s   10.244.1.2   rawfile-worker   <none>           <none>
 ```
 
-> _**NOTE**_: The setup.sh script deploys the local helm chart using the current git commit hash, so if you're committing code
+> [!IMPORTANT]
+> The setup.sh script deploys the local helm chart using the current git commit hash, so if you're committing code
 > and rebuilding images, please be aware that you'll have to re-run the setup script!
 
 ## Testing
@@ -514,8 +516,8 @@ Helm Docs Built......................................(no files to check)Skipped
  create mode 100644 docs/develop.md
 ```
 
-You might have noticed in the examples above I commited with `-s`.
-Please ensure you always do so. See more [here](https://github.com/openebs/community/blob/develop/CONTRIBUTING.md#sign-your-work).
+You might have noticed in the examples above I commited with `-s`. \
+Please ensure you always do so. See more information on the [contributing guide](https://github.com/openebs/community/blob/develop/CONTRIBUTING.md#sign-your-work).
 
 ## CI
 
@@ -528,7 +530,7 @@ For the GitHub Actions you can refer to the `./github/workflows` folder.
 As things stand, all test actions run when a PR is created/updated. The [mergify] bot is only used for easier
 merging of a PR, automatically rebasing and re-running the tests if necessary.
 
-#### 🚀 Mergify IO Commands
+### 🚀 Mergify IO Commands
 
 Use these commands directly in your GitHub pull request comments to automate actions with Mergify.
 
@@ -544,7 +546,8 @@ Use these commands directly in your GitHub pull request comments to automate act
 | `@Mergifyio dequeue`   | Remove the pull request from a merge queue           |
 | `@Mergifyio requeue`   | Re-enter the pull request into the merge queue       |
 
-> NOTE: we're still getting familiar with mergify ourselves, so if you have any improvements or suggestion
+> [!NOTE]
+> We're still getting familiar with mergify ourselves, so if you have any improvements or suggestion
 > on how we can leverage it better, we'd be delighted to hear about it!
 
 [nix]: https://nixos.org/

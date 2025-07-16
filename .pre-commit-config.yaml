@@ -1,4 +1,23 @@
+ci:
+  skip: [helm-k8s-manifest]
+
 repos:
+  - repo: local
+    hooks:
+      - id: version-sync
+        name: Rawfile version
+        entry: bash -c './.pre-commit.sh --version-sync'
+        language: system
+        files: ^(pyproject.toml|deploy/helm/rawfile-localpv/Chart.yaml)
+        types: [file]
+  - repo: local
+    hooks:
+      - id: helm-k8s-manifest
+        name: Kubernetes manifest
+        entry: bash -c 'nix-shell .pre-commit.nix --run "./.pre-commit.sh --manifest"'
+        language: system
+        files: ^(deploy|pyproject.toml)
+        types: [file]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.3
     hooks:
@@ -17,8 +36,9 @@ repos:
             rawfile/templates/.*
           )$
       - id: end-of-file-fixer
-        exclude: ^(rawfile/csi/|deploy/helm/.*/README.md)
+        exclude: ^(rawfile/csi/|deploy/helm/.*/README.*|deploy/rawfile-csi-driver.yaml)
       - id: trailing-whitespace
+        exclude: deploy/rawfile-csi-driver.yaml
   - repo: https://github.com/norwoodj/helm-docs
     rev: "v1.14.2"
     hooks:

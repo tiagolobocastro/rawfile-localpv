@@ -16,8 +16,14 @@ provisioner: rawfile.csi.openebs.io
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
+mountOptions:
+  []
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  thinProvision: "false"
+  formatOptions: ""
 ---
-# Source: rawfile-localpv/helm/crds/templates/csi-volume-snapshot-class.yaml
+# Source: rawfile-localpv/charts/crds/templates/csi-volume-snapshot-class.yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -25,7 +31,7 @@ metadata:
     api-approved.kubernetes.io: https://github.com/kubernetes-csi/external-snapshotter/pull/814
     controller-gen.kubebuilder.io/version: v0.11.3
     helm.sh/resource-policy: keep
-
+    
   creationTimestamp: null
   name: volumesnapshotclasses.snapshot.storage.k8s.io
 spec:
@@ -173,7 +179,7 @@ status:
   conditions: []
   storedVersions: []
 ---
-# Source: rawfile-localpv/helm/crds/templates/csi-volume-snapshot-content.yaml
+# Source: rawfile-localpv/charts/crds/templates/csi-volume-snapshot-content.yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -181,7 +187,7 @@ metadata:
     api-approved.kubernetes.io: https://github.com/kubernetes-csi/external-snapshotter/pull/814
     controller-gen.kubebuilder.io/version: v0.11.3
     helm.sh/resource-policy: keep
-
+    
   creationTimestamp: null
   name: volumesnapshotcontents.snapshot.storage.k8s.io
 spec:
@@ -673,7 +679,7 @@ status:
   conditions: []
   storedVersions: []
 ---
-# Source: rawfile-localpv/helm/crds/templates/csi-volume-snapshot.yaml
+# Source: rawfile-localpv/charts/crds/templates/csi-volume-snapshot.yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -681,7 +687,7 @@ metadata:
     api-approved.kubernetes.io: https://github.com/kubernetes-csi/external-snapshotter/pull/814
     controller-gen.kubebuilder.io/version: v0.11.3
     helm.sh/resource-policy: keep
-
+    
   creationTimestamp: null
   name: volumesnapshots.snapshot.storage.k8s.io
 spec:
@@ -1114,7 +1120,7 @@ rules:
     resources: ["csistoragecapacities"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
-    resources: ["pods"]
+    resources: ["pods", "pods/log"]
     verbs: ["get"]
   - apiGroups: ["apps"]
     resources: ["daemonsets"]
@@ -1176,6 +1182,12 @@ rules:
   - apiGroups: ["snapshot.storage.k8s.io"]
     resources: ["volumesnapshotcontents/status"]
     verbs: ["update", "patch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list", "watch", "update", "patch", "delete"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots/status"]
+    verbs: ["update", "patch"]
 ---
 # Source: rawfile-localpv/templates/rbac.yaml
 kind: ClusterRoleBinding
@@ -1185,7 +1197,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: release-name-rawfile-localpv-driver
-    namespace: prod-main-sms-panel
+    namespace: default
 roleRef:
   kind: ClusterRole
   name: release-name-rawfile-localpv-provisioner
@@ -1199,7 +1211,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: release-name-rawfile-localpv-driver
-    namespace: prod-main-sms-panel
+    namespace: default
 roleRef:
   kind: ClusterRole
   name: release-name-rawfile-localpv-broker
@@ -1213,7 +1225,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: release-name-rawfile-localpv-driver
-    namespace: prod-main-sms-panel
+    namespace: default
 roleRef:
   kind: ClusterRole
   name: release-name-rawfile-localpv-resizer
@@ -1227,7 +1239,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: release-name-rawfile-localpv-driver
-    namespace: prod-main-sms-panel
+    namespace: default
 roleRef:
   kind: ClusterRole
   name: release-name-rawfile-localpv-snapshotter
@@ -1239,10 +1251,10 @@ kind: Service
 metadata:
   name: release-name-rawfile-localpv-controller
   labels:
-    helm.sh/chart: rawfile-localpv-0.9.0
+    helm.sh/chart: rawfile-localpv-0.10.0
     app.kubernetes.io/name: rawfile-localpv
     app.kubernetes.io/instance: release-name
-    app.kubernetes.io/version: "0.8.0"
+    app.kubernetes.io/version: "0.10.0"
     app.kubernetes.io/managed-by: Helm
     component: controller
 spec:
@@ -1259,10 +1271,10 @@ kind: Service
 metadata:
   name: release-name-rawfile-localpv-node
   labels:
-    helm.sh/chart: rawfile-localpv-0.9.0
+    helm.sh/chart: rawfile-localpv-0.10.0
     app.kubernetes.io/name: rawfile-localpv
     app.kubernetes.io/instance: release-name
-    app.kubernetes.io/version: "0.8.0"
+    app.kubernetes.io/version: "0.10.0"
     app.kubernetes.io/managed-by: Helm
     component: node
 spec:
@@ -1316,9 +1328,13 @@ spec:
           hostPath:
             path: /var/csi/rawfile
             type: DirectoryOrCreate
+        - name: device
+          hostPath:
+            path: /dev
+            type: Directory
       containers:
         - name: csi-driver
-          image: "docker.io/openebs/rawfile-localpv:0.8.0"
+          image: "docker.io/openebs/rawfile-localpv:v0.10.0"
           imagePullPolicy: "IfNotPresent"
           securityContext:
             privileged: true
@@ -1329,8 +1345,12 @@ spec:
               value: "/var/csi/rawfile"
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
+            - name: IMAGE_REGISTRY
+              value: "docker.io"
             - name: IMAGE_REPOSITORY
               value: "openebs/rawfile-localpv"
+            - name: IMAGE_TAG
+              value: "v0.10.0"
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -1340,6 +1360,16 @@ spec:
               value: "true"
             - name: METRICS_PORT
               value: "9100"
+            - name: NAMESPACE
+              value: default
+            - name: LOG_LEVEL
+              value: INFO
+            - name: LOG_FORMAT
+              value: json
+            - name: RESERVED_CAPACITY
+              value: ""
+            - name: CAPACITY_OVERRIDE
+              value: ""
           ports:
             - name: metrics
               containerPort: 9100
@@ -1353,10 +1383,12 @@ spec:
               mountPropagation: "Bidirectional"
             - name: data-dir
               mountPath: /data
+            - name: device
+              mountPath: /dev
           resources:
             {}
         - name: node-driver-registrar
-          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.2.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.13.0
           imagePullPolicy: IfNotPresent
           args:
             - --csi-address=$(ADDRESS)
@@ -1389,7 +1421,7 @@ spec:
               cpu: 10m
               memory: 100Mi
         - name: external-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v4.0.1
+          image: registry.k8s.io/sig-storage/csi-provisioner:v5.2.0
           imagePullPolicy: IfNotPresent
           args:
             - "--csi-address=$(ADDRESS)"
@@ -1420,7 +1452,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: external-snapshotter
-          image: registry.k8s.io/sig-storage/csi-snapshotter:v5.0.1
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.2.1
           imagePullPolicy: IfNotPresent
           args:
             - "--csi-address=$(ADDRESS)"
@@ -1436,6 +1468,12 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+        - name: snapshot-controller
+          args:
+            - "--v=2"
+            - "--enable-distributed-snapshotting=true"
+          image: registry.k8s.io/sig-storage/snapshot-controller:v8.2.1
+          imagePullPolicy: IfNotPresent
 ---
 # Source: rawfile-localpv/templates/controller/statefulset.yaml
 apiVersion: apps/v1
@@ -1466,7 +1504,7 @@ spec:
           emptyDir: {}
       containers:
         - name: csi-driver
-          image: "docker.io/openebs/rawfile-localpv:0.8.0"
+          image: "docker.io/openebs/rawfile-localpv:v0.10.0"
           imagePullPolicy: "IfNotPresent"
           args:
             - csi-driver
@@ -1478,8 +1516,22 @@ spec:
               value: unix:///csi/csi.sock
             - name: NODE_DATADIR
               value: "/var/csi/rawfile"
+            - name: IMAGE_REGISTRY
+              value: "docker.io"
             - name: IMAGE_REPOSITORY
               value: "openebs/rawfile-localpv"
+            - name: IMAGE_TAG
+              value: "v0.10.0"
+            - name: NAMESPACE
+              value: default
+            - name: LOG_LEVEL
+              value: INFO
+            - name: LOG_FORMAT
+              value: json
+            - name: RESERVED_CAPACITY
+              value: ""
+            - name: CAPACITY_OVERRIDE
+              value: ""
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -1489,7 +1541,7 @@ spec:
           resources:
             {}
         - name: external-resizer
-          image: registry.k8s.io/sig-storage/csi-resizer:v1.2.0
+          image: registry.k8s.io/sig-storage/csi-resizer:v1.13.2
           imagePullPolicy: IfNotPresent
           args:
             - "--csi-address=$(ADDRESS)"

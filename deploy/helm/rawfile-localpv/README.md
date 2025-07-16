@@ -18,6 +18,10 @@ Kubernetes: `>= 1.21`
 |------------|------|---------|
 |  | crds | 0.0.1 |
 
+## Install and Upgrades
+
+Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tree/v0.10.0/docs/install-guide.md)
+
 ## Values
 
 | Key | Type | Default | Description |
