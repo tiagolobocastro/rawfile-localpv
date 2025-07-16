@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from consts import FORMAT_OPTIONS_KEY
 import grpc
 import time
 from csi import csi_pb2, csi_pb2_grpc
@@ -21,7 +22,13 @@ from utils.logs import log_grpc_request
 from filesystem import get_from_device_or_fallback, from_device
 from filesystem.utils import get_device_for_mountpoint
 from rawfile_servicer import check_access_type, get_access_type
-from utils.rawfile import img_file, attach_loop, AccessType, path_stats, detach_loops
+from utils.rawfile import (
+    img_file,
+    attach_loop,
+    AccessType,
+    path_stats,
+    detach_loops,
+)
 from filesystem.base import UnknownFileSystemError
 from utils.lock import VolLock
 
@@ -108,14 +115,22 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
             self.bds.NodePublishVolume(bd_publish_request, context)
 
             if get_access_type(request) is AccessType.mount:
+                format_options_str = bd_publish_request.volume_context.get(
+                    FORMAT_OPTIONS_KEY, ""
+                )
+                format_options = []
+                if len(format_options_str):
+                    format_options = format_options_str.split(" ")
                 default_fs = request.volume_capability.mount.fs_type
                 fs = get_from_device_or_fallback(
                     bd_publish_request.target_path, default_fs
                 )
                 fs.mountpoint = f"{request.staging_target_path}/mount"
                 fs.format_and_mount(
-                    mount_options=[]
-                )  # TODO: Respect from bd_publish_request.volume_capability
+                    mount_options=bd_publish_request.volume_capability.mount.mount_flags
+                    or [],
+                    format_options=format_options,
+                )
 
             return csi_pb2.NodeStageVolumeResponse()
 
@@ -216,8 +231,6 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def CreateVolume(self, request, context):
-        # TODO: volume_capabilities
-
         if len(request.volume_capabilities) != 1:
             context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT, "Exactly one cap is supported"

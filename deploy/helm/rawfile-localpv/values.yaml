@@ -164,6 +164,8 @@ storageClasses:
     thinProvision: false
     # -- Sets mount options for filesystem volumes
     mountOptions: []
+    # -- Sets format options for filesystem volumes
+    formatOptions: []
 
 crds:
   # -- Disables the installation of all CRDs if set to false
