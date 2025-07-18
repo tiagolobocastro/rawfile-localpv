@@ -1,7 +1,8 @@
 import os
+import importlib.metadata
 
 PROVISIONER_NAME = os.getenv("PROVISIONER_NAME", "rawfile.csi.openebs.io")
-PROVISIONER_VERSION = "0.10.0"
+PROVISIONER_VERSION = importlib.metadata.version("rawfile")
 DATA_DIR = "/data"
 CONFIG = {}
 D_PERMS = 0o700
