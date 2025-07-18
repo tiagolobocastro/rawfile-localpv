@@ -50,4 +50,4 @@ Please read the following steps carefully:
 - [ ] Create a git tag with the format `v${Chart.yaml/version}` and push it!
 - [ ] If all goes well the chart and container images should be tested, pushed and a new github release will be created!
 - [ ] Update the github release description as required
-- [ ] Feel free to update `CHANGELOG.md` post-releae if you spote anything missing!
+- [ ] Feel free to update `CHANGELOG.md` post-release if you spot anything missing!

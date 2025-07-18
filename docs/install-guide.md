@@ -19,7 +19,7 @@ You can create one or more storage classes using chart, by default we have a sto
 
 ## Upgrade
 
-Before upgrading please read through the [Changelog](../CHANGELOG.md) as well as this document and follow any suggested recomendations to ensure a smooth upgrade
+Before upgrading please read through the [Changelog](../CHANGELOG.md) as well as this document and follow any suggested recommendations to ensure a smooth upgrade
 
 > [!WARNING]
 Don't blind upgrade to a potentially breaking version as additional steps may be required
