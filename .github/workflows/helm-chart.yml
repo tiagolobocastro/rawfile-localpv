@@ -22,13 +22,9 @@ jobs:
         run: |
           export NIX_PATH=nixpkgs=$(jq '.nixpkgs.url' nix/sources.json -r)
           echo "NIX_PATH=$NIX_PATH" >> $GITHUB_ENV
-          nix-shell .pre-commit.nix --run "echo"
+          nix-shell deploy/helm/shell.nix --run "echo"
       - name: HelmChart Lint
-        run: nix-shell .pre-commit.nix --run ".ci/helm-lint.sh"
-      - name: Manifest
-        run: |
-          nix-shell .pre-commit.nix --run "./.pre-commit.sh --manifest"
-          git diff --exit-code ./deploy
+        run: nix-shell deploy/helm/shell.nix --run ".ci/helm-lint.sh"
 
   publish:
     permissions:

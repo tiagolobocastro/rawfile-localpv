@@ -13,15 +13,6 @@ helm install rawfile-localpv rawfile-localpv/rawfile-localpv -n openebs --create
 > [!TIP]
 We suggest you familiarize yourself with the [Charts' README.md](../deploy/helm/rawfile-localpv/README.md) and the [Charts' values.yaml](../deploy/helm/rawfile-localpv/values.yaml), as you may want to tune it to your liking
 
-### Via manifest
-
-```shell
-kubectl apply -f https://github.com/openebs/rawfile-localpv/raw/refs/heads/develop/deploy/rawfile-localpv-driver.yaml
-```
-
-> [!NOTE]
-Manifests are generated from helm chart's default values using `helm template` command
-
 ## Usage
 
 You can create one or more storage classes using chart, by default we have a storage class named `rawfile-localpv`, but you can change the name or other options by changing chart values
@@ -41,6 +32,8 @@ This version introduces the following breaking changes:
 
 - Volumes are thick provisioned by default  \
   To retain existing thin behaviour you may set `thinProvision` storage class parameter to `false`
+- Manifest install file has removed
+  Please use the helm chart package going forward. You may also generate equivalent file with `helm template`
 
 ## Uninstall
 
@@ -60,7 +53,7 @@ After you've done so, you should uninstall using the same method which you had u
 helm uninstall rawfile-localpv -n openebs
 ```
 
-### Installed using manifest
+### Installed using manifest (removed)
 
 ```shell
 kubectl delete -f https://github.com/openebs/rawfile-localpv/raw/refs/heads/develop/deploy/rawfile-localpv-driver.yaml

@@ -1,6 +1,3 @@
-ci:
-  skip: [helm-k8s-manifest]
-
 repos:
   - repo: local
     hooks:
@@ -9,14 +6,6 @@ repos:
         entry: bash -c './.pre-commit.sh --version-sync'
         language: system
         files: ^(pyproject.toml|deploy/helm/rawfile-localpv/Chart.yaml)
-        types: [file]
-  - repo: local
-    hooks:
-      - id: helm-k8s-manifest
-        name: Kubernetes manifest
-        entry: bash -c 'nix-shell .pre-commit.nix --run "./.pre-commit.sh --manifest"'
-        language: system
-        files: ^(deploy|pyproject.toml)
         types: [file]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.3

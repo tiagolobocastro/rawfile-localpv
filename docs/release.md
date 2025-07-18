@@ -45,7 +45,6 @@ Please read the following steps carefully:
 - [ ] Ensure the Chart.yaml `version` and `appVersion` and set to the release version
 - [ ] Ensure the pyproject.yoml `version` is set to the release version
 - [ ] Fixup the helm chart docs (the pre-commit hook will do this for you)
-- [ ] Fixup the deploy manifest (the pre-commit hook will do this for you)
 - [ ] Update `CHANGELOG.md` with the new version and changes
 - [ ] Raise PR to merge the changes above
 - [ ] Create a git tag with the format `v${Chart.yaml/version}` and push it!

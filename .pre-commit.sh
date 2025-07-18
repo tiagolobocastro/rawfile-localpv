@@ -12,7 +12,6 @@ Usage: $(basename "$0") [OPTIONS]
 
 Options:
   -h, --help                        Display this text.
-  --manifest                        Generate the kubernetes manifest device.
   --version-sync                    Sync the pyproject version with the chart version and appVersion.
 
 Examples:
@@ -25,10 +24,6 @@ while [ "$#" -gt 0 ]; do
   case $1 in
     -h|--help)
       break
-      shift;;
-    --manifest)
-      helm template "$CHART_DIR" > "$CHART_DIR/../../rawfile-csi-driver.yaml"
-      DONE="yes"
       shift;;
     --version-sync)
       PY_VERSION=$(grep -Po '(?<=version = ")[^"]*' "$ROOT_DIR/pyproject.toml")

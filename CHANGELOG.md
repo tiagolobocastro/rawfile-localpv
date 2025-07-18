@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   To retain existing thin behaviour you may set `thinProvision` storage class parameter to `true`
 - Switched to the official K8s client library
 
+### Removed 🗑️
+
+- Removed K8s manifest file deployment type
+
 ### Internal 🔧
 
 - Increase kubelet sync frequency for testing
