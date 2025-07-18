@@ -61,18 +61,34 @@ def cli(
 @click.option(
     "--enable-metrics/--disable-metrics", envvar="ENABLE_METRICS", default=True
 )
-def csi_driver(endpoint, nodeid, enable_metrics, metrics_port):
-    migrate_all_volume_schemas()
+@click.option("--plugin-type", envvar="PLUGIN_TYPE")
+@click.option("--grpc-workers", envvar="GRPC_WORKERS", default="10")
+def csi_driver(
+    endpoint, nodeid, enable_metrics, metrics_port, plugin_type, grpc_workers
+):
     if enable_metrics:
         expose_metrics(nodeid, metrics_port)
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    logger.debug(
+        "Starting gRPC server",
+        endpoint=endpoint,
+        nodeid=nodeid,
+        enable_metrics=enable_metrics,
+        plugin_type=plugin_type,
+    )
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=int(grpc_workers)))
     csi_pb2_grpc.add_IdentityServicer_to_server(
         bd2fs.Bd2FsIdentityServicer(rawfile_servicer.RawFileIdentityServicer()), server
     )
-    csi_pb2_grpc.add_NodeServicer_to_server(
-        bd2fs.Bd2FsNodeServicer(rawfile_servicer.RawFileNodeServicer(node_name=nodeid)),
-        server,
-    )
+    if plugin_type == "node":
+        migrate_all_volume_schemas()
+        csi_pb2_grpc.add_NodeServicer_to_server(
+            bd2fs.Bd2FsNodeServicer(
+                rawfile_servicer.RawFileNodeServicer(node_name=nodeid)
+            ),
+            server,
+        )
+    # NOTE: Controller methods are exposed on node plugin too because we are using distributed-snapshotting
+    # and Snapshoting methods are only available in Controller Service right now
     csi_pb2_grpc.add_ControllerServicer_to_server(
         bd2fs.Bd2FsControllerServicer(rawfile_servicer.RawFileControllerServicer()),
         server,
