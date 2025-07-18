@@ -5,7 +5,6 @@ let
 in
 pkgs.mkShell {
   name = "rawfile-shell";
-  HELM_DOCS_SKIP_VERSION_FOOTER = "true";
   buildInputs = with pkgs; [
     kubectl
     kubernetes-helm-wrapped
@@ -17,9 +16,9 @@ pkgs.mkShell {
     poetry # Python3.13 is not supported (Overriding python3 input will not work)
     gcc
     gnumake
-    btrfs-progs
     stdenv.cc.cc.lib
-  ] ++ pkgs.lib.optional (builtins.getEnv "IN_NIX_SHELL" == "pure") [ docker-client ];
+  ] ++ pkgs.lib.optional (builtins.getEnv "IN_NIX_SHELL" == "pure") [ docker-client ]
+  ++ pkgs.lib.optional (stdenv.isLinux) [ pkgs.btrfs-progs ];
   shellHook = ''
     export LD_PRELOAD=${lib.makeLibraryPath [pkgs.stdenv.cc.cc]}/libstdc++.so.6:$LD_PRELOAD
     poetry env use "$(which python)"
