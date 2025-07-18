@@ -68,6 +68,9 @@ controller:
       value: "true"
       effect: NoSchedule
 
+  # -- Number of gRPC workers for controller component
+  grpcWorkers: 10
+
 node:
   image:
     # -- Overrides default image repository for node component
@@ -132,6 +135,9 @@ node:
 
   # -- Tolerations for node component
   tolerations:
+
+  # -- Number of gRPC workers for node component
+  grpcWorkers: 10
 
 # -- Sets image pull secret while pulling images from a private registry
 imagePullSecrets: []

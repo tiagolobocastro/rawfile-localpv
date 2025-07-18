@@ -30,6 +30,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |
 | controller.externalResizer.image.repository | string | `"sig-storage/csi-resizer"` | Image Repository for `csi-resizer` |
 | controller.externalResizer.image.tag | string | `"v1.13.2"` | Image tag for `csi-resizer` |
+| controller.grpcWorkers | int | `10` | Number of gRPC workers for controller component |
 | controller.image.pullPolicy | string | `""` | Overrides default image pull policy for node component |
 | controller.image.repository | string | `""` | Overrides default image repository for node component |
 | controller.image.tag | string | `""` | Overrides default image tag for node component |
@@ -63,6 +64,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.externalSnapshotter.image.registry | string | `""` | Image Registry for `csi-snapshotter` |
 | node.externalSnapshotter.image.repository | string | `"sig-storage/csi-snapshotter"` | Image Repository for `csi-snapshotter` |
 | node.externalSnapshotter.image.tag | string | `"v8.2.1"` | Image Tag for `csi-snapshotter` |
+| node.grpcWorkers | int | `10` | Number of gRPC workers for node component |
 | node.image.pullPolicy | string | `""` | Overrides default image pull policy for node component |
 | node.image.repository | string | `""` | Overrides default image repository for node component |
 | node.image.tag | string | `""` | Overrides default image tag for node component |
