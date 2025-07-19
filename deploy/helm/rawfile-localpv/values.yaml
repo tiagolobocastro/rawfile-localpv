@@ -20,6 +20,9 @@ global:
   imagePullPolicy: IfNotPresent
   # -- Default image pull secret for images
   imagePullSecrets: []
+  analytics:
+    # -- Enable OpenEBS analytics which help track engine traction and usage.
+    enabled: true
 
 image:
   # -- Image registry for rawfile-localpv (default is global.imageRegistry)

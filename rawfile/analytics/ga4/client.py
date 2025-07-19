@@ -52,6 +52,6 @@ class GA4Client:
         }
         session = requests.Session()
         session.mount("https://", DNSAdapter(["8.8.8.8"]))
-        response = session.post(url, json=payload)
+        response = session.post(url, json=payload, timeout=60)
         response.raise_for_status()
         return response

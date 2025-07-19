@@ -19,6 +19,7 @@ kubernetes = "^33.1.0"
 requests = "^2.32.4"
 dnspython = "^2.7.0"
 tldextract = "^5.3.0"
+humanize = "^4.12.3"
 
 [tool.poetry.scripts]
 rawfile = "rawfile.rawfile:cli"

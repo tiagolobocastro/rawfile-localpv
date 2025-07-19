@@ -81,6 +81,16 @@ spec:
               value: {{ .Values.capacityOverride | toString | quote }}
             - name: GRPC_WORKERS
               value: {{ .Values.node.grpcWorkers | toString | quote }}
+            - name: GA_ENABLED
+              value: "{{ .Values.global.analytics.enabled }}"
+            {{- if .Values.global.analytics.gaId }}
+            - name: GA_ID
+              value: {{ .Values.global.analytics.gaId | quote }}
+            {{- end }}
+            {{- if .Values.global.analytics.gaKey }}
+            - name: GA_KEY
+              value: {{ .Values.global.analytics.gaKey | quote }}
+            {{- end }}
           ports:
             - name: metrics
               containerPort: {{ .Values.metrics.port }}
@@ -144,6 +154,7 @@ spec:
             - "--capacity-for-immediate-binding=true"
             - "--capacity-ownerref-level=1" # DaemonSet
             - "--node-deployment=true"
+            - "--extra-create-metadata=true"
           env:
             - name: ADDRESS
               value: /csi/csi.sock

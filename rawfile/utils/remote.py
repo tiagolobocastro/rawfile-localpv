@@ -27,6 +27,7 @@ CONFIG["reserved_capacity"] = int(os.getenv("reserved_capacity", "0"))
 CONFIG["capacity_override"] = int(os.getenv("CAPACITY_OVERRIDE", "0"))
 
 init_logging(LoggingFormats(os.getenv("LOG_FORMAT")), os.getenv("LOG_LEVEL"))
+
 remote_fn = lambda fn: fn # FIXME: dirty hack
 call_data = pickle.loads(base64.b64decode({call_data_serialized}))
 exec(call_data[0])
@@ -39,7 +40,7 @@ EOF
         raise Exception("Should only be run inside pod")
 
 
-def scrub(volume_id):
+def scrub(volume_id) -> int:
     import time
     from subprocess import CalledProcessError
 
@@ -48,9 +49,10 @@ def scrub(volume_id):
 
     img_dir = utils.rawfile.img_dir(volume_id)
     if not img_dir.exists():
-        return
+        return 0
 
     img_file = utils.rawfile.img_file(volume_id)
+    img_size = utils.rawfile.img_size(volume_id)
     loops = utils.rawfile.attached_loops(img_file.resolve().as_posix())
     if len(loops) > 0:
         raise CalledProcessError(returncode=VOLUME_IN_USE_EXIT_CODE, cmd="")
@@ -60,6 +62,7 @@ def scrub(volume_id):
     gc_at = now  # TODO: GC sensitive PVCs later
     utils.rawfile.patch_metadata(volume_id, {"deleted_at": deleted_at, "gc_at": gc_at})
     utils.rawfile.gc_if_needed(volume_id, dry_run=False)
+    return img_size
 
 
 def init_rawfile(volume_id, size, thin_provision=False):

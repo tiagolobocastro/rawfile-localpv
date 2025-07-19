@@ -8,6 +8,7 @@ import re
 from datetime import datetime
 from consts import CONFIG, VOLUME_IS_ATTACHED
 from kubernetes import client as k8s_client, config as k8s_config
+from kubernetes.client.rest import ApiException
 from utils.logs import LoggingFormats, logger, format as log_format, level as log_level
 
 
@@ -176,3 +177,78 @@ def run_on_node(fn, node):
     match = re.search(f"{VOLUME_IS_ATTACHED}=(True|False)", logs)
     is_attached = match.group(1) == "True" if match else None
     return is_attached
+
+
+def namespace_uid(namespace: str) -> str:
+    v1 = k8s_client.CoreV1Api()
+    namespace = v1.read_namespace(name=namespace)
+    return namespace.metadata.uid
+
+
+def version_code():
+    version_api = k8s_client.VersionApi()
+    return version_api.get_code()
+
+
+def read_node_info(nodeid):
+    v1 = k8s_client.CoreV1Api()
+    node = v1.read_node(name=nodeid)
+    info = node.status.node_info
+    return info
+
+
+def node_count() -> int:
+    v1 = k8s_client.CoreV1Api()
+    node_count = len(v1.list_node().items)
+    return node_count
+
+
+def read_config_map(name: str):
+    v1 = k8s_client.CoreV1Api()
+    try:
+        config_map = v1.read_namespaced_config_map(name, namespace=CONFIG["namespace"])
+        return config_map.data or {}
+    except ApiException as e:
+        if e.status == 404:
+            return {}
+        raise e
+
+
+def write_config_map(name: str, key: str, value: str, overwrite=False):
+    v1 = k8s_client.CoreV1Api()
+    namespace = CONFIG["namespace"]
+
+    try:
+        config_map = v1.read_namespaced_config_map(name, namespace)
+        data = config_map.data or {}
+
+        if key not in data:
+            data[key] = value
+            config_map.data = data
+            v1.replace_namespaced_config_map(name, namespace, body=config_map)
+            logger.trace("Added key", name=name, key=key, value=value)
+        elif overwrite:
+            data[key] = value
+            config_map.data = data
+            v1.replace_namespaced_config_map(name, namespace, body=config_map)
+            logger.trace("Modified key", name=name, key=key, value=value, old=data[key])
+        else:
+            logger.trace(
+                "Not modifying existing key",
+                name=name,
+                key=key,
+                value=value,
+                old=data[key],
+            )
+
+    except ApiException as e:
+        if e.status == 404:
+            logger.trace("Creating new configmap", name=name, key=key, value=value)
+            config_map = k8s_client.V1ConfigMap(
+                metadata=k8s_client.V1ObjectMeta(name=name, namespace=namespace),
+                data={key: value},
+            )
+            v1.create_namespaced_config_map(namespace, body=config_map)
+            logger.trace("Created configmap with key", name=name, key=key, value=value)
+        else:
+            raise e

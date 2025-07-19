@@ -1,4 +1,6 @@
 from typing import Any
+import re
+from datetime import timedelta
 
 
 def pretty_size_to_bytes(pretty_size: str):
@@ -42,3 +44,24 @@ def str_to_bool(value: str | None) -> bool:
 
 def normalize_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
     return {k.lower(): v for k, v in parameters.items()}
+
+
+def parse_time_delta(time_str: str) -> timedelta:
+    pattern = r"(?P<value>\d+)(?P<unit>[dhms])"
+    matches = re.findall(pattern, time_str.lower())
+
+    if not matches:
+        raise ValueError(f"Invalid delta format: '{time_str}'")
+
+    total = timedelta()
+    for value, unit in matches:
+        value = int(value)
+        if unit == "d":
+            total += timedelta(days=value)
+        elif unit == "h":
+            total += timedelta(hours=value)
+        elif unit == "m":
+            total += timedelta(minutes=value)
+        elif unit == "s":
+            total += timedelta(seconds=value)
+    return total
