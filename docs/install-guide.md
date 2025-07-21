@@ -32,8 +32,10 @@ This version introduces the following breaking changes:
 
 - Volumes are thick provisioned by default  \
   To retain existing thin behaviour you may set `thinProvision` storage class parameter to `false`
-- Manifest install file has removed
+- Manifest install file has been removed
   Please use the helm chart package going forward. You may also generate equivalent file with `helm template`
+- Analytics have been added and enabled default
+  We'd appreciate it if you kept them enabled, but of course you may disable them through the helm var `.globals.analytics.enabled`
 
 ## Uninstall
 
