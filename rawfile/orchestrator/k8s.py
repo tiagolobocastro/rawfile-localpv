@@ -1,5 +1,6 @@
 from typing import Any, TypedDict
 import uuid
+import os
 from subprocess import CalledProcessError
 from time import sleep
 
@@ -9,7 +10,15 @@ from consts import CONFIG, VOLUME_IS_ATTACHED
 from kubernetes import client as k8s_client, config as k8s_config
 from utils.logs import LoggingFormats, logger, format as log_format, level as log_level
 
-k8s_config.load_config()
+
+def load_config():
+    if os.getenv("KUBERNETES_SERVICE_HOST"):
+        k8s_config.load_incluster_config()
+    else:
+        k8s_config.load_config()
+
+
+load_config()
 
 
 class TaskPodInfo(TypedDict):
