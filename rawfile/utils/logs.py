@@ -8,6 +8,21 @@ from enum import StrEnum
 from google.protobuf.json_format import MessageToDict
 
 
+def fmt_k8s_exception(e: Exception):
+    error_data = {
+        "status": e.status,
+        "reason": e.reason,
+        "body": e.body,
+    }
+    return error_data
+
+
+def fmt_exception(e: Exception):
+    if all(key in e.__dict__ for key in ["status", "reason", "body"]):
+        return fmt_k8s_exception(e)
+    return str(e)
+
+
 def _format_timedelta(td: timedelta):
     total_ms = int(td.total_seconds() * 1000)
     days, rem_ms = divmod(total_ms, 86400 * 1000)

@@ -34,6 +34,8 @@ if [ -n "${IMAGE_TAG:-}" ] && [ "$IMAGE_DESTINATION" = "registry" ]; then
   COMMIT=$IMAGE_TAG
 fi
 
+PROVISIONER_VERSION=$(grep '^version =' "$SCRIPT_DIR/../pyproject.toml" | sed 's/version = "\(.*\)"/\1/')
+
 docker buildx build \
   ${TAGS_ARGS} \
   ${PUSH_OPTION} \
@@ -42,6 +44,7 @@ docker buildx build \
   --platform="${CI_IMAGE_PLATFORMS}" \
   --build-arg "IMAGE_REPOSITORY=${IMAGE}" \
   --build-arg "IMAGE_TAG=${COMMIT}" \
+  --build-arg "PROVISIONER_VERSION=${PROVISIONER_VERSION}" \
   "$SCRIPT_DIR/.."
 
 if [ "$(kubectl config current-context)" = "kind-rawfile" ]; then

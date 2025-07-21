@@ -130,6 +130,10 @@ def img_file(volume_id):
     return Path(metadata(volume_id)["img_file"])
 
 
+def img_size(volume_id) -> int:
+    return metadata(volume_id)["size"]
+
+
 def destroy(volume_id, dry_run=True):
     logger.info("Destroying Volume", volume_id=volume_id, dry_run=dry_run)
     if not dry_run:

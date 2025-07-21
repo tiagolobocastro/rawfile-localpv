@@ -40,9 +40,9 @@ HostPath/LocalPVs are simple bind-mounts from the host filesystem into the pod.
 
 To use a Filesystem based `extent file` as the emulated block device (i.e. a soft-LUN block device), and leverage LINUX loop devices to associate that soft-LUN file as a complete flexible block device (i.e. an emulated soft disk device).
 
-At this point you can create a PV with a fileystem on it, which adds the following benefits:
+At this point you can create a PV with a filesystem on it, which adds the following benefits:
 
-- You can monitor volume usage by running `df -hT` in `O(1)` since each soft-LUN block device is mounted separately on the local node (displaying utilization status/metrics or each mountpoint).
+- You can monitor volume usage by running `df -hT` in `O(1)` since each soft-LUN block device is mounted separately on the local node (displaying utilization status/metrics or each mount point).
 - The size limit is enforced by the operating system, based on the backing file system capacity and soft-lun device file size.
 - Since volumes are backed by different files, each soft-lun device file can be formatted using different filesystems, and/or customized with different filesystem options.
 

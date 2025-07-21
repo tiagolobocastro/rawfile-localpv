@@ -9,6 +9,7 @@ from consts import (
     PROVISIONER_VERSION,
     RESOURCE_EXHAUSTED_EXIT_CODE,
     VOLUME_IN_USE_EXIT_CODE,
+    CSI_K8S_PVC_NAME_KEY,
 )
 from csi import csi_pb2, csi_pb2_grpc
 from utils.rawfile import be_absent, be_symlink
@@ -25,6 +26,7 @@ from utils.rawfile import (
     mountpoint_to_dev,
 )
 from utils.units import normalize_parameters, str_to_bool
+from analytics.ga4 import send_event, Usage
 
 NODE_NAME_TOPOLOGY_KEY = "hostname"
 
@@ -221,6 +223,12 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
             else:
                 raise exc
 
+        def volume_provision(usage: Usage):
+            pvc_name = params.get(CSI_K8S_PVC_NAME_KEY, "")
+            usage.volume_provision(pvc_name, request.name, size)
+
+        send_event(volume_provision)
+
         return csi_pb2.CreateVolumeResponse(
             volume=csi_pb2.Volume(
                 volume_id=request.name,
@@ -234,13 +242,20 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def DeleteVolume(self, request, context):
+        size = 0
         try:
-            scrub(volume_id=request.volume_id)
+            size = scrub(volume_id=request.volume_id)
         except CalledProcessError as exc:
             if exc.returncode == VOLUME_IN_USE_EXIT_CODE:
                 context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Volume in use")
             else:
                 raise exc
+
+        def volume_deprovision(usage: Usage):
+            if size > 0:
+                usage.volume_deprovision(request.volume_id, size)
+
+        send_event(volume_deprovision)
         return csi_pb2.DeleteVolumeResponse()
 
     def GetCapacity(self, request, context):

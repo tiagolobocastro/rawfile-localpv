@@ -256,6 +256,7 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
         bd_request.capacity_range.required_bytes = max(
             request.capacity_range.required_bytes, 10 * 1024 * 1024
         )  # At least 10MB
+
         # FIXME: update access_type
         # bd_request.volume_capabilities[0].block = ""
         # bd_request.volume_capabilities[0].mount = None

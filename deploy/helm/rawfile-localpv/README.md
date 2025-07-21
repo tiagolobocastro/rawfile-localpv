@@ -39,6 +39,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | controller.tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/master","operator":"Equal","value":"true"}]` | Tolerations for controller component |
 | crds.csi.volumeSnapshots.enabled | bool | `true` | Install Volume Snapshot CRDs |
 | crds.enabled | bool | `true` | Disables the installation of all CRDs if set to false |
+| global.analytics.enabled | bool | `true` | Enable OpenEBS analytics which help track engine traction and usage. |
 | global.imagePullPolicy | string | `"IfNotPresent"` | Default pull policy for images |
 | global.imagePullSecrets | list | `[]` | Default image pull secret for images |
 | global.imageRegistry | string | `"docker.io"` | Default image registry for Images from DockerHub |

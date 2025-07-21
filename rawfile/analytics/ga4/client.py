@@ -30,6 +30,9 @@ class DNSAdapter(HTTPAdapter):
             raise
         resolved_url = request.url.replace(fqdn, a_record)
         request.url = resolved_url
+        self.poolmanager.connection_pool_kw["server_hostname"] = fqdn
+        self.poolmanager.connection_pool_kw["assert_hostname"] = fqdn
+        request.headers["Host"] = fqdn
 
         return super().get_connection_with_tls_context(request, verify, proxies, cert)
 
@@ -48,7 +51,7 @@ class GA4Client:
             "events": [{"name": event_name, "params": params}],
         }
         session = requests.Session()
-        session.mount(url, DNSAdapter(["8.8.8.8"]))
-        response = session.post(url, json=payload)
+        session.mount("https://", DNSAdapter(["8.8.8.8"]))
+        response = session.post(url, json=payload, timeout=60)
         response.raise_for_status()
         return response

@@ -4,15 +4,17 @@ import signal
 import bd2fs
 import click
 import grpc
+import os
 from filesystem import FileSystemName
 import rawfile_servicer
 from datetime import datetime
-from consts import CONFIG
+from consts import CONFIG, GA_ID, GA_KEY
 from csi import csi_pb2_grpc
 from metrics import expose_metrics
 from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
 from utils.logs import LoggingFormats, init as init_logging, logger
 from utils.units import pretty_size_to_bytes
+from analytics.ga4 import run_ping, shutdown_event_worker, run_event_worker
 
 
 @click.group()
@@ -26,6 +28,13 @@ from utils.units import pretty_size_to_bytes
 @click.option("--log-level", envvar="LOG_LEVEL", default="INFO")
 @click.option("--reserved-capacity", envvar="RESERVED_CAPACITY", default="0")
 @click.option("--capacity-override", envvar="CAPACITY_OVERRIDE", default="0")
+@click.option(
+    "--ga-enabled/--ga-disabled",
+    default=os.getenv("GA_ENABLED", "false").lower() in ("1", "true", "yes", "on"),
+)
+@click.option("--ga-id", envvar="GA_ID", default=GA_ID)
+@click.option("--ga-key", envvar="GA_KEY", default=GA_KEY)
+@click.option("--ga-ping", envvar="GA_PING", default="24h")
 def cli(
     image_registry,
     image_repository,
@@ -37,6 +46,10 @@ def cli(
     log_level,
     reserved_capacity,
     capacity_override,
+    ga_enabled,
+    ga_id,
+    ga_key,
+    ga_ping,
 ):
     CONFIG["image_registry"] = image_registry
     CONFIG["image_repository"] = image_repository
@@ -51,7 +64,16 @@ def cli(
     _capacity_override = pretty_size_to_bytes(capacity_override)
     if _capacity_override:
         CONFIG["capacity_override"] = _capacity_override
-    init_logging(_format=LoggingFormats(log_format), _level=log_level)
+
+    init_logging(_format=LoggingFormats(log_format), _level=log_level.upper())
+
+    CONFIG["ga_ping"] = ga_ping
+    CONFIG["ga_id"] = ga_id
+    CONFIG["ga_key"] = ga_key
+    if (len(ga_id) == 0 or len(ga_key) == 0) and ga_enabled:
+        logger.error("GA_ID and GA_KEY must be provided in order to enable analytics")
+        ga_enabled = False
+    CONFIG["ga_enabled"] = ga_enabled
 
 
 @cli.command()
@@ -66,8 +88,14 @@ def cli(
 def csi_driver(
     endpoint, nodeid, enable_metrics, metrics_port, plugin_type, grpc_workers
 ):
+    CONFIG["nodeid"] = nodeid
+
     if enable_metrics:
         expose_metrics(nodeid, metrics_port)
+
+    if plugin_type == "controller":
+        run_ping()
+
     logger.debug(
         "Starting gRPC server",
         endpoint=endpoint,
@@ -79,6 +107,7 @@ def csi_driver(
     csi_pb2_grpc.add_IdentityServicer_to_server(
         bd2fs.Bd2FsIdentityServicer(rawfile_servicer.RawFileIdentityServicer()), server
     )
+
     if plugin_type == "node":
         migrate_all_volume_schemas()
         csi_pb2_grpc.add_NodeServicer_to_server(
@@ -87,8 +116,10 @@ def csi_driver(
             ),
             server,
         )
+        run_event_worker()
+
     # NOTE: Controller methods are exposed on node plugin too because we are using distributed-snapshotting
-    # and Snapshoting methods are only available in Controller Service right now
+    # and Snapshotting methods are only available in Controller Service right now
     csi_pb2_grpc.add_ControllerServicer_to_server(
         bd2fs.Bd2FsControllerServicer(rawfile_servicer.RawFileControllerServicer()),
         server,
@@ -97,6 +128,9 @@ def csi_driver(
 
     def signal_handler(sig, _=None):
         grace_seconds = 20
+
+        # shutdown analytics worker
+        shutdown_event_worker()
 
         logger.info("Received termination request", signal=signal.Signals(sig).name)
         logger.info(
