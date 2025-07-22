@@ -5,7 +5,6 @@ from .ping import Ping
 from .version_set import VersionSet
 from config import config
 from utils.logs import logger, fmt_exception
-from utils.units import parse_time_delta
 
 import threading
 import queue
@@ -81,7 +80,7 @@ def enabled() -> bool:
 
 def run_ping():
     if enabled():
-        ping_hours = parse_time_delta(config.ga_ping)
+        ping_hours = config.ga_ping
         background_thread = threading.Thread(
             daemon=True, target=Ping(get_usage(), ping_hours).run
         )
