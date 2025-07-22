@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New storage class parameter: `formatOptions` to specify filesystem creation/formatting options
 - New storage class parameter: `thinProvision` to control full storage allocation or on-demand
 - Support for reserved storage/capacity override support on nodes via helm variable configuration: `reservedCapacity` and `capacityOverride`
+- Analytics are now being sent to the OpenEBS GA4 project
 
 ### Fixed 🐛
 
@@ -23,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Delete snapshot if source data has already been deleted
 - Atomically update metadata and file image
 - Use `mountOptions` from the storage class when mounting a filesystem
+- Increased CSI volume resize timeout from 10s to 30s
+- Add return error code to `fallocate`
 
 ### Changed ♻️
 
@@ -30,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ⚠️ Thick volumes are now the default ⚠️  \
   To retain existing thin behaviour you may set `thinProvision` storage class parameter to `true`
 - Switched to the official K8s client library
+- Try to load K8s incluster config first (removes noddy warning message in-cluster)
+- Change CLI to pydantic for better validation and UX
 
 ### Removed 🗑️
 
@@ -42,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `nixos-shell` experience for dev
 - Add helm-docs pre-commit hook
 - Added Contributor documentation
+- Set provisioner version using the pyproject toml file
+- Improve reliability and usability of volume verifier and task pod
+- Run CI smoke tests as `fail-fast`
 
 ### Known Issues 🚫
 
