@@ -5,7 +5,6 @@ from .ping import Ping
 from .version_set import VersionSet
 from config import config
 from utils.logs import logger, fmt_exception
-from utils.units import parse_time_delta
 
 import threading
 import queue
@@ -17,15 +16,18 @@ version_info = None
 
 
 def get_usage():
+    nodeid = ""
+    if config.csi_driver:
+        nodeid = config.csi_driver.nodeid
     global version_info
     if version_info is None:
         # If K8s API is not working correctly at the start, then there's probably
         # no point proceeding anyway
-        version_info = VersionSet(config.nodeid)
+        version_info = VersionSet(nodeid)
     event_usage = Usage(
         api_secret=config.ga_key,
         measurement_id=config.ga_id,
-        nodeid=config.nodeid,
+        nodeid=nodeid,
         version_info=version_info,
     )
     return event_usage
@@ -81,7 +83,7 @@ def enabled() -> bool:
 
 def run_ping():
     if enabled():
-        ping_hours = parse_time_delta(config.ga_ping)
+        ping_hours = config.ga_ping
         background_thread = threading.Thread(
             daemon=True, target=Ping(get_usage(), ping_hours).run
         )
