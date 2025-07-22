@@ -35,7 +35,7 @@ helm upgrade --wait \
   --set metrics.serviceMonitor.enabled=false \
   --set image.registry=$CI_REGISTRY,image.repository=$CI_IMAGE_REPO,image.tag=$TAG,image.pullPolicy=Never \
   --set logLevel=TRACE,logFormat=pretty \
-  --set global.analytics.enabled=false \
+  --set global.analytics.gaId=Ry1MUEQwM0NHRVZO,global.analytics.gaKey=aWJqNmIwbnhScUM1dGk0eHpVZ1Jvdw== \
   $CHART
 
 kubectl wait --for=condition=ready pod --all -n openebs
