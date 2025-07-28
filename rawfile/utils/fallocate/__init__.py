@@ -15,5 +15,6 @@ class FallocateFailed(Exception):
 
 
 def fallocate(fd, mode, offset, length):
-    if _fallocate.lib.fallocate(fd, mode, offset, length) != 0:
-        raise FallocateFailed()
+    returncode = _fallocate.lib.fallocate(fd, mode, offset, length)
+    if returncode != 0:
+        raise FallocateFailed(returncode)
