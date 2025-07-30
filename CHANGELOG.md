@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] - YYYY-MM-DD ⚠️ Breaking Changes
+## [Unreleased] - YYYY-MM-DD
+
+### Added ✨
+
+### Fixed 🐛
+
+### Changed ♻️
+
+### Removed 🗑️
+
+### Internal 🔧
+
+### Known Issues 🚫
+
+- ReadOnly attribute in PVC template not fully handled
+- Volume restore/clone not implemented
+
+## [v0.11.0] - 2025-07-22 ⚠️ Breaking Changes
 
 ### Added ✨
 
