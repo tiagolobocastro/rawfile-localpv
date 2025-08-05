@@ -1250,14 +1250,14 @@ rsa = ["oauthlib[signedtoken] (>=3.0.0)"]
 
 [[package]]
 name = "retrying"
-version = "1.4.1"
+version = "1.4.2"
 description = "Retrying"
 optional = false
 python-versions = ">=3.6"
 groups = ["test"]
 files = [
-    {file = "retrying-1.4.1-py3-none-any.whl", hash = "sha256:d736050c1adfc0a71fa022d9198ee130b0e66be318678a3fdd8b1b8872dc0997"},
-    {file = "retrying-1.4.1.tar.gz", hash = "sha256:4d206e0ed2aff5ef2f3cd867abb9511e9e8f31127c5aca20f1d5246e476903b0"},
+    {file = "retrying-1.4.2-py3-none-any.whl", hash = "sha256:bbc004aeb542a74f3569aeddf42a2516efefcdaff90df0eb38fbfbf19f179f59"},
+    {file = "retrying-1.4.2.tar.gz", hash = "sha256:d102e75d53d8d30b88562d45361d6c6c934da06fab31bd81c0420acb97a8ba39"},
 ]
 
 [[package]]
@@ -1432,4 +1432,4 @@ dev = ["black (>=19.3b0) ; python_version >= \"3.6\"", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.13"
-content-hash = "c7341ef08de586593e729b25b33605853bf86944d09ff9df8e06b579d51ca70f"
+content-hash = "0613a22996520811616ad390d31c471bffd69dc806142cafb67a23722aa4e10f"
