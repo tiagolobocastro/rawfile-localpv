@@ -4,14 +4,14 @@ multi-ecosystem-groups:
   infrastructure:
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: ⬆
 
 updates:
   - package-ecosystem: "docker"
     directory: "/"
     multi-ecosystem-group: "infrastructure"
     patterns: ['*']
-    commit-message:
-      prefix: ⬆
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -26,5 +26,3 @@ updates:
     directory: "/"
     multi-ecosystem-group: "infrastructure"
     patterns: ['*']
-    commit-message:
-      prefix: ⬆
