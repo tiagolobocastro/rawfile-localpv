@@ -9,6 +9,7 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     multi-ecosystem-group: "infrastructure"
+    patterns: ['*']
     commit-message:
       prefix: ⬆
   - package-ecosystem: "pip"
@@ -24,5 +25,6 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     multi-ecosystem-group: "infrastructure"
+    patterns: ['*']
     commit-message:
       prefix: ⬆
