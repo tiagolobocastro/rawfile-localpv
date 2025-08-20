@@ -104,7 +104,13 @@ class RawFileCmd(
         description="K8s Namespace of the driver",
     )
     node_datadir: str = Field(
-        description="Data Directory path of the driver, where raw files, their matadata and their lock files are getting stored",
+        description="""
+                    Data Directory path of the driver,
+                    where raw files, their matadata and their lock files are getting stored
+
+                    NOTE that this path is used only for task pods, For CSI driver itself `/data` is used
+                    meaning that this path has to be mounted to `/data` in the CSI driver pod
+                    """,
     )
     log_level: Annotated[
         Literal["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"],
