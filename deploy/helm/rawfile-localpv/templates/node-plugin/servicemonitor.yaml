@@ -10,7 +10,9 @@ spec:
   endpoints:
   - port: metrics
     path: /metrics
-    interval: {{ .Values.serviceMonitor.interval }}
+    {{- with .Values.metrics.serviceMonitor.interval }}
+    interval: {{ . }}
+    {{- end }}
   jobLabel: "helm.sh/chart"
   namespaceSelector:
     matchNames:
