@@ -16,6 +16,7 @@ from pydantic import (
     Field,
     model_validator,
 )
+from pydantic.networks import IPvAnyAddress
 from typing import Annotated, Literal
 import consts
 from utils.logs import LoggingFormats
@@ -31,6 +32,25 @@ class CSIDriverCmd(BaseModel):
     ) = Field(
         description="Listen address for gRPC server",
     )
+    internal_ip: IPvAnyAddress | None = Field(
+        description="Listen ip for gRPC server (used for internal communication only)",
+        default=None,
+    )
+    internal_port: int | None = Field(
+        description="Listen port for gRPC server (used for internal communication only)",
+        default=None,
+        ge=0,
+        le=65535,
+    )
+    internal_grpc_workers: int = Field(
+        description="Number of workers for the internal gRPC server",
+        default=10,
+    )
+    internal_signature: str | None = Field(
+        description="Signature used for authentication of internal communication gRPC service",
+        default=None,
+    )
+    node_ds: str = Field(description="Name of the node DS used for node discovery")
     nodeid: str = Field(
         validation_alias=AliasChoices("nodeid", "NODE_ID"),
         description="ID/Name of the node that is running the driver",
@@ -47,6 +67,16 @@ class CSIDriverCmd(BaseModel):
     plugin_type: Literal["controller", "node"] = Field(
         description="Type/Mode of the CSI plugin"
     )
+
+    @model_validator(mode="after")
+    def validate_internal_endpoint(
+        self,
+    ):
+        if self.plugin_type == "node" and not self.internal_ip:
+            raise ValueError(
+                "Internal Communication IP/PORT is required on node plugin"
+            )
+        return self
 
 
 class GCCmd(BaseModel):

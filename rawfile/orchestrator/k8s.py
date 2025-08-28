@@ -1,15 +1,19 @@
-from typing import Any, TypedDict
-import uuid
+from enum import StrEnum
 import os
-from subprocess import CalledProcessError
 from time import sleep
-import re
 from datetime import datetime
-from consts import VOLUME_IS_ATTACHED
-from kubernetes import client as k8s_client, config as k8s_config
+import threading
+from typing import Callable
+from kubernetes import client as k8s_client, config as k8s_config, watch
 from config import config
 from utils.logs import logger
 from kubernetes.client.rest import ApiException
+
+
+class NodeUnavailableError(Exception):
+    def __init__(self, node_name):
+        self.node_name = node_name
+        super().__init__(f"Node {self.node_name} is not available")
 
 
 def load_config():
@@ -22,52 +26,12 @@ def load_config():
 load_config()
 
 
-class TaskPodInfo(TypedDict):
-    name: str
-    namespace: str
-    datadir: str
-    node_selector: dict[str, str]
-    image_repository: str
-    image_tag: str
-    command: str
-
-
-def generate_task_pod_manifest(info: TaskPodInfo) -> dict[str, Any]:
-    return {
-        "apiVersion": "v1",
-        "kind": "Pod",
-        "metadata": {"name": info["name"], "namespace": info["namespace"]},
-        "spec": {
-            "restartPolicy": "Never",
-            "terminationGracePeriodSeconds": 0,
-            "tolerations": [{"operator": "Exists"}],
-            "volumes": [
-                {
-                    "name": "data-dir",
-                    "hostPath": {"path": info["datadir"], "type": "DirectoryOrCreate"},
-                },
-                {"name": "device", "hostPath": {"path": "/dev", "type": "Directory"}},
-            ],
-            "nodeSelector": info["node_selector"],
-            "containers": [
-                {
-                    "name": "task",
-                    "image": f"{info['image_repository']}:{info['image_tag']}",
-                    "imagePullPolicy": "IfNotPresent",
-                    "volumeMounts": [
-                        {"name": "data-dir", "mountPath": "/data"},
-                        {"name": "device", "mountPath": "/dev"},
-                    ],
-                    "resources": {
-                        "requests": {"cpu": "0m", "memory": "0Mi"},
-                        "limits": {"cpu": "100m", "memory": "100Mi"},
-                    },
-                    "command": ["/bin/sh", "-c"],
-                    "args": [info["command"]],
-                }
-            ],
-        },
-    }
+class K8sEventType(StrEnum):
+    ADDED = "ADDED"
+    MODIFIED = "MODIFIED"
+    DELETED = "DELETED"
+    BOOKMARK = "BOOKMARK"
+    ERROR = "ERROR"
 
 
 def volume_to_node(volume_id):
@@ -104,56 +68,6 @@ def wait_for(pred, desc=""):
     logger.info(
         f"Finished waiting for {desc}", start=start, end=end, latency=end - start
     )
-
-
-def run_on_node(fn, node):
-    api = k8s_client.CoreV1Api()
-    name = f"task-{uuid.uuid4()}"
-    registry = config.image_registry
-    repository = config.image_repository
-    ctx: TaskPodInfo = {
-        "name": name,
-        "namespace": config.namespace,
-        "node_selector": {"kubernetes.io/hostname": node},
-        "command": fn,
-        "image_repository": (
-            f"{registry}/{repository}" if registry is not None else repository
-        ),
-        "image_tag": config.image_tag,
-        "datadir": config.node_datadir,
-    }
-    manifest = generate_task_pod_manifest(ctx)
-    logger.debug("Creating task pod", manifest=manifest)
-    api.create_namespaced_pod(
-        namespace=config.namespace,
-        body=manifest,
-    )
-
-    def is_finished():
-        task_pod = api.read_namespaced_pod(name=name, namespace=config.namespace)
-        status = task_pod.status
-        if status.phase in ("Succeeded", "Failed"):
-            return True
-        return False
-
-    wait_for(is_finished, "task to finish")
-    task_pod = api.read_namespaced_pod(name=name, namespace=config.namespace)
-    status = task_pod.status
-    logs = api.read_namespaced_pod_log(
-        name=name, namespace=config.namespace, container="task"
-    )
-    api.delete_namespaced_pod(name=name, namespace=config.namespace)
-
-    if status.phase != "Succeeded":
-        exit_code = status.container_statuses[0].state.terminated.exit_code
-        logger.error(
-            "Task failed", exit_code=exit_code, output=logs, pod_name=name, node=node
-        )
-        raise CalledProcessError(returncode=exit_code, cmd=f"Task: {name}", output=logs)
-
-    match = re.search(f"{VOLUME_IS_ATTACHED}=(True|False)", logs)
-    is_attached = match.group(1) == "True" if match else None
-    return is_attached
 
 
 def namespace_uid(namespace: str) -> str:
@@ -229,3 +143,89 @@ def write_config_map(name: str, key: str, value: str, overwrite=False):
             logger.trace("Created configmap with key", name=name, key=key, value=value)
         else:
             raise e
+
+
+class NodeIPMapping:
+    def __init__(self):
+        if not config.csi_driver:
+            raise Exception("Should run from CSI Driver")
+        self.apps_v1 = k8s_client.AppsV1Api()
+        self.core_v1 = k8s_client.CoreV1Api()
+        ds = self.apps_v1.read_namespaced_daemon_set(
+            namespace=config.namespace, name=config.csi_driver.node_ds
+        )
+        self.selector = ds.spec.selector.match_labels
+        self.label_selector = ",".join(f"{k}={v}" for k, v in self.selector.items())
+
+        self._mapping = {}
+        self.reload_mapping()
+
+        # Start watcher in background
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self.watch_daemonset_pods, daemon=True)
+        self._thread.start()
+
+    def reload_mapping(self):
+        pods = self.core_v1.list_namespaced_pod(
+            namespace=config.namespace, label_selector=self.label_selector
+        )
+        mapping = {}
+        for pod in pods.items:
+            if pod.status.phase == "Running" and pod.status.pod_ip:
+                mapping[pod.spec.node_name] = pod.status.pod_ip
+        self._mapping = mapping
+
+    def get_node_ip(self, node_name):
+        ip = self._mapping.get(node_name, None)
+        if not ip:
+            raise NodeUnavailableError(node_name)
+        return ip
+
+    def _reload_and_raise(self, exc: Exception):
+        self.reload_mapping()
+        raise exc
+
+    def watch_daemonset_pods(self):
+        w = watch.Watch()
+        while not self._stop_event.is_set():
+            retrying = False
+            try:
+                for event in w.stream(
+                    self.core_v1.list_namespaced_pod,
+                    namespace=config.namespace,
+                    label_selector=self.label_selector,
+                    timeout_seconds=60,  # give it a heartbeat
+                ):
+                    if self._stop_event.is_set():
+                        w.stop()
+                        break
+                    actions: dict[K8sEventType, Callable] = {
+                        K8sEventType.DELETED: lambda: self._mapping.pop(
+                            event["object"].spec.node_name
+                        ),
+                        K8sEventType.ADDED: lambda: self._mapping.__setitem__(
+                            event["object"].spec.node_name,
+                            event["object"].status.pod_ip,
+                        ),
+                        K8sEventType.MODIFIED: lambda: self._mapping.__setitem__(
+                            event["object"].spec.node_name,
+                            event["object"].status.pod_ip,
+                        ),
+                        K8sEventType.ERROR: lambda: self._reload_and_raise(
+                            Exception("Got Error Event on wather")
+                        ),
+                        K8sEventType.BOOKMARK: lambda: None,
+                    }
+                    actions[event["type"]]()
+                    retrying = False
+            except Exception:
+                if not retrying:
+                    logger.exception("DS Watcher Error, retrying...")
+                retrying = True
+
+    def stop(self):
+        self._stop_event.set()
+        self._thread.join(timeout=2)
+
+
+node_ip_mapping = NodeIPMapping()

@@ -12,6 +12,9 @@ spec:
       port: {{ .Values.metrics.port }}
       targetPort: metrics
       protocol: TCP
+    - name: internal
+      port: {{ .Values.node.internalGRPC.port }}
+      protocol: TCP
   selector:
     {{- include "rawfile-localpv.selectorLabels" . | nindent 4 }}
     component: node

@@ -95,6 +95,24 @@ spec:
             - name: GA_KEY
               value: {{ .Values.global.analytics.gaKey | quote }}
             {{- end }}
+            - name: CSI_DRIVER__INTERNAL_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: CSI_DRIVER__INTERNAL_PORT
+              value: {{ .Values.node.internalGRPC.port | toString | quote }}
+            - name: CSI_DRIVER__INTERNAL_GRPC_WORKERS
+              value: {{ .Values.node.internalGRPC.workers | toString | quote }}
+            - name: CSI_DRIVER__NODE_DS
+              value: {{ include "rawfile-localpv.fullname" . }}-node
+            {{- if .Values.auth.enabled }}
+            - name: CSI_DRIVER__INTERNAL_SIGNATURE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rawfile-localpv.fullname" . }}-secrets
+                  key: internal-signature
+            {{- end }}
           ports:
             - name: metrics
               containerPort: {{ .Values.metrics.port }}
