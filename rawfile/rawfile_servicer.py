@@ -2,6 +2,8 @@ from pathlib import Path
 from subprocess import CalledProcessError
 
 import grpc
+from config import config
+from internal_svc import SIGNATURE_METADATA
 import utils.rawfile
 from consts import (
     FORMAT_OPTIONS_KEY,
@@ -11,11 +13,12 @@ from consts import (
     VOLUME_IN_USE_EXIT_CODE,
     CSI_K8S_PVC_NAME_KEY,
 )
+from internal import internal_pb2, internal_pb2_grpc
 from csi import csi_pb2, csi_pb2_grpc
 from utils.rawfile import be_absent, be_symlink
 from google.protobuf.wrappers_pb2 import BoolValue
-from orchestrator.k8s import run_on_node, volume_to_node
-from utils.remote import expand_rawfile, get_capacity, init_rawfile, scrub
+from orchestrator.k8s import node_ip_mapping, volume_to_node
+from utils.remote import get_capacity, init_rawfile, scrub
 from utils.logs import log_grpc_request
 from utils.commands import run
 from utils.rawfile import (
@@ -268,21 +271,22 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
         node_name = volume_to_node(volume_id)
         size = request.capacity_range.required_bytes
 
-        try:
-            is_attached = run_on_node(
-                expand_rawfile.as_cmd(volume_id=volume_id, size=size), node=node_name
-            )
-        except CalledProcessError as exc:
-            if exc.returncode == RESOURCE_EXHAUSTED_EXIT_CODE:
-                context.abort(
-                    grpc.StatusCode.RESOURCE_EXHAUSTED, "Not enough disk space"
-                )
-            else:
-                raise exc
+        node_ip = node_ip_mapping.get_node_ip(node_name)
+        metadata = [(SIGNATURE_METADATA, config.csi_driver.internal_signature)]
+        channel = grpc.insecure_channel(f"{node_ip}:{config.csi_driver.internal_port}")
+        stub = internal_pb2_grpc.InternalStub(channel)
+        response = stub.ExpandRawFile(
+            internal_pb2.ExpandRawFileRequest(volume_id=volume_id, new_size=size),
+            metadata=metadata,
+            timeout=15,
+        )
+
+        if response.status == internal_pb2.ExpandRawFileStatus.RESOURCE_EXHAUSTED:
+            context.abort(grpc.StatusCode.RESOURCE_EXHAUSTED, "Not enough disk space")
 
         node_expansion_required = True
-        if get_access_type(request) is AccessType.block and is_attached is not None:
-            node_expansion_required = is_attached
+        if get_access_type(request) is AccessType.block:
+            node_expansion_required = response.is_attached
 
         return csi_pb2.ControllerExpandVolumeResponse(
             capacity_bytes=size,

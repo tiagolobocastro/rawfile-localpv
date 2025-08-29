@@ -47,6 +47,8 @@ def _format_timedelta(td: timedelta):
 
 class _JSONEncoder(json.JSONEncoder):
     def default(self, o):
+        if isinstance(o, (tuple, set)):
+            return list(o)
         if isinstance(o, datetime):
             return o.isoformat()
         elif isinstance(o, timedelta):
@@ -98,6 +100,7 @@ level = "INFO"
 
 def init(_format: LoggingFormats, _level: str):
     logger.remove()
+    global format, level
     format = _format
     level = _level
     logger.add(**_logging_handlers[format], level=level)

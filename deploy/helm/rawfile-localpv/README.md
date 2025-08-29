@@ -26,6 +26,8 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| auth.enabled | bool | `true` | Enables authentication for internal gRPC server |
+| auth.token | string | `""` | Sets authentication token for internal gRPC server, will generate one if nothing provided |
 | capacityOverride | string | `""` | Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`] |
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |
 | controller.externalResizer.image.repository | string | `"sig-storage/csi-resizer"` | Image Repository for `csi-resizer` |
@@ -69,6 +71,8 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.image.pullPolicy | string | `""` | Overrides default image pull policy for node component |
 | node.image.repository | string | `""` | Overrides default image repository for node component |
 | node.image.tag | string | `""` | Overrides default image tag for node component |
+| node.internalGRPC.port | int | `4500` | Port Number used for internal communication gRPC server |
+| node.internalGRPC.workers | int | `10` | gRPC worker count used for internal communication |
 | node.metrics.enabled | bool | `false` |  |
 | node.priorityClassName | string | `"system-node-critical"` | priorityClassName for node component since this part is critical for node `system-node-critical` is default |
 | node.resources | object | `{}` | Sets compute resources for node component |

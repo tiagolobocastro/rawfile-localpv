@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+service Internal {
+  rpc ExpandRawFile (ExpandRawFileRequest) returns (ExpandRawFileResponse);
+}
+
+message ExpandRawFileRequest {
+  string volume_id = 1;
+  int64 new_size = 2;
+}
+
+enum ExpandRawFileStatus {
+  OK = 0;
+  RESOURCE_EXHAUSTED = 1;
+}
+
+message ExpandRawFileResponse {
+  bool is_attached = 1;
+  ExpandRawFileStatus status = 2;
+}

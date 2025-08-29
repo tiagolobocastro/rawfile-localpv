@@ -11,6 +11,12 @@ reservedCapacity: ""
 # -- Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`]
 capacityOverride: ""
 
+auth:
+  # -- Enables authentication for internal gRPC server
+  enabled: true
+  # -- Sets authentication token for internal gRPC server, will generate one if nothing provided
+  token: ""
+
 global:
   # -- Default image registry for Images from DockerHub
   imageRegistry: docker.io
@@ -53,7 +59,8 @@ controller:
       tag: v1.13.2
 
   # -- Sets compute resources for controller component
-  resources: {}
+  resources:
+    {}
     # limits:
     #   cpu: 1
     #   memory: 100Mi
@@ -123,7 +130,8 @@ node:
   dataDirPath: /var/csi/rawfile
 
   # -- Sets compute resources for node component
-  resources: {}
+  resources:
+    {}
     # limits:
     #   cpu: 1
     #   memory: 100Mi
@@ -141,6 +149,12 @@ node:
 
   # -- Number of gRPC workers for node component
   grpcWorkers: 10
+
+  internalGRPC:
+    # -- Port Number used for internal communication gRPC server
+    port: 4500
+    # --gRPC worker count used for internal communication
+    workers: 10
 
 # -- Sets image pull secret while pulling images from a private registry
 imagePullSecrets: []

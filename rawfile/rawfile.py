@@ -7,12 +7,14 @@ import grpc
 import rawfile_servicer
 from datetime import datetime
 from csi import csi_pb2_grpc
+from internal import internal_pb2_grpc
 from metrics import expose_metrics
 from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
 from utils.logs import init as init_logging, logger
-
+from internal_svc import InternalServicer, SignatureInterceptor
 
 from analytics.ga4 import run_ping, shutdown_event_worker, run_event_worker
+from orchestrator.k8s import node_ip_mapping
 
 
 def csi_driver(driver_config: CSIDriverCmd):
@@ -32,10 +34,10 @@ def csi_driver(driver_config: CSIDriverCmd):
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=int(driver_config.grpc_workers))
     )
+    internal_server = None
     csi_pb2_grpc.add_IdentityServicer_to_server(
         bd2fs.Bd2FsIdentityServicer(rawfile_servicer.RawFileIdentityServicer()), server
     )
-
     if driver_config.plugin_type == "node":
         migrate_all_volume_schemas()
         csi_pb2_grpc.add_NodeServicer_to_server(
@@ -45,6 +47,18 @@ def csi_driver(driver_config: CSIDriverCmd):
             server,
         )
         run_event_worker()
+        internal_server = grpc.server(
+            futures.ThreadPoolExecutor(
+                max_workers=int(driver_config.internal_grpc_workers)
+            ),
+            interceptors=(SignatureInterceptor(driver_config.internal_signature),),
+        )
+        internal_pb2_grpc.add_InternalServicer_to_server(
+            InternalServicer(), internal_server
+        )
+        internal_server.add_insecure_port(
+            f"{driver_config.internal_ip}:{driver_config.internal_port}"
+        )
 
     # NOTE: Controller methods are exposed on node plugin too because we are using distributed-snapshotting
     # and Snapshotting methods are only available in Controller Service right now
@@ -67,16 +81,39 @@ def csi_driver(driver_config: CSIDriverCmd):
 
         start = datetime.now()
         server.stop(grace_seconds)
+        if internal_server:
+            internal_server.stop(grace_seconds)
         end = datetime.now()
         elapsed = end - start
 
-        logger.info("CSI Server has stopped", elapsed=elapsed, start=start, end=end)
+        logger.info(
+            "CSI Server has been stopped", elapsed=elapsed, start=start, end=end
+        )
+        logger.info("Stopping node plugin DS watcher")
+        start = datetime.now()
+        node_ip_mapping.stop()
+        end = datetime.now()
+        elapsed = end - start
+        logger.info(
+            "Node plugin DS watcher has been stopped",
+            elapsed=elapsed,
+            start=start,
+            end=end,
+        )
 
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
     server.start()
-    server.wait_for_termination()
+    if internal_server:
+        internal_server.start()
+    with futures.ThreadPoolExecutor() as executor:
+        terminations = [
+            executor.submit(server.wait_for_termination),
+        ]
+        if internal_server:
+            terminations.append(executor.submit(internal_server.wait_for_termination))
+        futures.wait(terminations, return_when=futures.FIRST_COMPLETED)
 
 
 if __name__ == "__main__":

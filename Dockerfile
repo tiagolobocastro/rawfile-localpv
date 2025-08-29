@@ -49,7 +49,15 @@ RUN python -m \
     --proto_path=protos/ \
     protos/csi.proto \
     --grpc_python_out=csi/ \
-    --python_out=csi/ && \
+    --python_out=csi/ \
+    --pyi_out=csi/ && \
+    python -m \
+    grpc_tools.protoc \
+    --proto_path=protos/ \
+    protos/internal.proto \
+    --grpc_python_out=internal/ \
+    --python_out=internal/ \
+    --pyi_out=internal/ && \
     python utils/fallocate/build.py
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 
