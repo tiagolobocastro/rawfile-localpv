@@ -19,7 +19,7 @@ kubernetes = "^33.1.0"
 pydantic = "^2.11.7"
 pydantic-settings = "^2.10.1"
 requests = "^2.32.5"
-dnspython = "^2.7.0"
+dnspython = "^2.8.0"
 tldextract = "^5.3.0"
 humanize = "^4.13.0"
 
@@ -27,7 +27,7 @@ humanize = "^4.13.0"
 rawfile = "rawfile.rawfile:cli"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.4.1"
+pytest = "^8.4.2"
 pytest-bdd = "^8.1.0"
 retrying = "^1.4.2"
 kubernetes = "^33.1.0"
