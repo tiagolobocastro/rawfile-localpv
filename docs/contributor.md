@@ -280,6 +280,14 @@ Run 'nixos-help' for the NixOS manual.
 nixos login: root (automatic login)
 ```
 
+Since this is a k3s cluster, you should load built images into it, example:
+
+```console
+> docker save docker.io/openebs/rawfile-localpv:c46e819-ci | k3s ctr images import -
+```
+
+> **NOTE** Image name and tag is from the last build output, you can also use `docker images` to find out what you have locally.
+
 To leave this shell you can use the key combination `Ctrl-a x`.
 You can then enter the [nixos-shell] again using the same command.
 Feel free to make irreparable damage to the virtual machine, simply delete it and start anew. This is as simple as:
