@@ -17,6 +17,7 @@ pkgs.mkShell {
     gcc
     gnumake
     stdenv.cc.cc.lib
+    xfsprogs
   ] ++ pkgs.lib.optional (builtins.getEnv "IN_NIX_SHELL" == "pure") [ docker-client ]
   ++ pkgs.lib.optional (stdenv.isLinux) [ pkgs.btrfs-progs ];
   shellHook = ''

@@ -13,6 +13,7 @@ KUBECTL="kubectl"
 DOCKER="docker"
 CLEANUP="false"
 SUDO=${SUDO:-"sudo"}
+RAW_SIZE="100GiB"
 K8S_VERSION=$(cat "$SCRIPT_DIR/../.kube-version")
 
 command -v "$KIND" >/dev/null 2>&1 || { echo >&2 "kind is not installed. Aborting."; exit 1; }
@@ -27,6 +28,7 @@ Options:
   --workers       <num>             The number of worker nodes (Default: $WORKERS).
   --dry-run                         Don't do anything, just output steps.
   --cleanup                         Prior to starting, stops the running instance of the deployer.
+  --loop-size     <size>            Size of the rawfile backend for each worker node (Default: $RAW_SIZE).
 
 Command:
   start                             Start the k8s cluster.
@@ -75,6 +77,11 @@ while [ "$#" -gt 0 ]; do
           shift;;
         --cleanup)
           CLEANUP="true"
+          shift;;
+        --loop-size)
+          shift
+          test $# -lt 1 && die "Missing Loop Size"
+          RAW_SIZE=$1
           shift;;
         --dry-run)
           if [ -z "$DRY_RUN" ]; then
@@ -133,7 +140,12 @@ for node_index in $(seq 1 $WORKERS); do
   fi
   nodes+=($node)
 
-  host_path="$TMP_KIND/$node"
+  host_path="$TMP_KIND/rawfile-mnt/$node"
+  mkdir -p "$host_path"
+
+  truncate -s "$RAW_SIZE" "$host_path/rawfile.img"
+  mkfs.xfs -m reflink=1 "$host_path/rawfile.img" >/dev/null
+
   cat <<EOF >> "$TMP_KIND_CONFIG"
 - role: worker
   image: kindest/node:$K8S_VERSION
@@ -147,8 +159,8 @@ for node_index in $(seq 1 $WORKERS); do
     - hostPath: /dev
       containerPath: /dev
       propagation: HostToContainer
-    - hostPath: $host_path
-      containerPath: /var/csi/rawfile
+    - hostPath: $host_path/rawfile.img
+      containerPath: /var/csi/rawfile.img
       propagation: HostToContainer
 EOF
 done
@@ -169,14 +181,16 @@ echo "HostIP: $host_ip"
 for node in ${nodes[@]}; do
   $DOCKER exec "$node" mount -o remount,rw /sys
 
+  $DOCKER exec "$node" sh -c "mkdir /var/csi/rawfile; mount /var/csi/rawfile.img /var/csi/rawfile"
+
   # Note: this will go away if the node restarts...
   $DOCKER exec "$node" bash -c 'printf "'"$host_ip"' kvmhost\n" >> /etc/hosts'
 
   # SSH access is required by the e2e test disruptive storage tests
-  docker exec "$node" apt update
-  docker exec "$node" apt install -y -q openssh-server
-  docker exec "$node" mkdir -p /root/.ssh
-  docker exec "$node" sh -c 'cat /etc/ssh/ssh_host_rsa_key.pub > /root/.ssh/authorized_keys'
-  docker cp "$node":/etc/ssh/ssh_host_rsa_key "$SCRIPT_DIR/e2e-test/ssh_id"
-  docker exec "$node" systemctl restart sshd
+  $DOCKER exec "$node" apt update
+  $DOCKER exec "$node" apt install -y -q openssh-server
+  $DOCKER exec "$node" mkdir -p /root/.ssh
+  $DOCKER exec "$node" sh -c 'cat /etc/ssh/ssh_host_rsa_key.pub > /root/.ssh/authorized_keys'
+  $DOCKER cp "$node":/etc/ssh/ssh_host_rsa_key "$SCRIPT_DIR/e2e-test/ssh_id"
+  $DOCKER exec "$node" systemctl restart sshd
 done
