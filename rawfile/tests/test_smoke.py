@@ -1,3 +1,4 @@
+import time
 import pytest
 from pytest_bdd import scenario, given, when, then, parsers
 from kubernetes import client, config
@@ -16,6 +17,7 @@ deployer = Deployer()
 
 namespace = "rawfile-test"
 provisioner = "rawfile.csi.openebs.io"
+attempt_counter = 0
 
 
 def short_pvc_name(binding_mode, access_mode, fs_type, volume_mode, mount_options):
@@ -138,8 +140,12 @@ def _(pvc):
         return
     name = pod.metadata.name
     logger.info(f"Deleting POD: {name}")
-    client.CoreV1Api().delete_namespaced_pod(name, namespace)
-    wait_pod_deleted(name)
+    try:
+        client.CoreV1Api().delete_namespaced_pod(name, namespace)
+        wait_pod_deleted(name)
+    except ApiException as e:
+        if e.status != 404:
+            raise e
 
 
 @when("another pod is created with the above PVC", target_fixture="expanded_pod")
@@ -257,10 +263,17 @@ def _(pvc):
 
 
 @then("the pod should complete with success")
-def _(pod):
+def _(pod, pvc):
     """the pod should complete with success."""
     wait_pod_success(pod.metadata.name)
     logger.info(f"Pod {pod.metadata.name} is complete")
+    client.CoreV1Api().delete_namespaced_pod(pod.metadata.name, namespace)
+    wait_pod_deleted(pod.metadata.name)
+    logger.info(f"Pod {pod.metadata.name} is deleted")
+    if pvc.spec.volume_mode == "Block":
+        # there's a slight delay between pod deleted and NodeUnstage
+        # Adding 2s since CI can be slow at times...
+        time.sleep(2)
 
 
 @given("a Persistent Volume Claim with Filesystem btrfs", target_fixture="btrfs_pvc")
@@ -573,9 +586,12 @@ def _(btrfs_snap):
     wait_fixed=100,
 )
 def wait_pod_success(name):
+    global attempt_counter
+    attempt_counter += 1
     pod = client.CoreV1Api().read_namespaced_pod(name, namespace)
     message = f"Pod {name} not completed yet"
-    logger.debug(message)
+    if attempt_counter % 5 == 0:
+        logger.debug(message)
     assert pod.status.phase == "Succeeded", message
 
 
@@ -584,9 +600,12 @@ def wait_pod_success(name):
     wait_fixed=100,
 )
 def wait_pod_running(name):
+    global attempt_counter
+    attempt_counter += 1
     pod = client.CoreV1Api().read_namespaced_pod(name, namespace)
-    message = f"Pod {name} not completed yet"
-    logger.debug(message)
+    message = f"Pod {name} not running yet"
+    if attempt_counter % 5 == 0:
+        logger.debug(message)
     assert pod.status.phase == "Running", message
 
 
@@ -595,9 +614,12 @@ def wait_pod_running(name):
     wait_fixed=100,
 )
 def wait_pvc_bound(name):
+    global attempt_counter
+    attempt_counter += 1
     pvc = client.CoreV1Api().read_namespaced_persistent_volume_claim(name, namespace)
     message = f"PVC {name} not bound yet"
-    logger.debug(message)
+    if attempt_counter % 10 == 0:
+        logger.debug(message)
     assert pvc.status.phase == "Bound", message
 
 
@@ -631,7 +653,7 @@ def wait_snap_ready(name):
 
 
 @retry(
-    stop_max_attempt_number=1000,
+    stop_max_attempt_number=200,
     wait_fixed=250,
 )
 def wait_pvc_expanded(name):
@@ -646,10 +668,13 @@ def wait_pvc_expanded(name):
     wait_fixed=500,
 )
 def wait_ns_deleted(name):
+    global attempt_counter
+    attempt_counter += 1
     try:
         client.CoreV1Api().read_namespace(name=namespace)
         message = f"Namespace {name} not deleted yet"
-        logger.debug(message)
+        if attempt_counter % 2 == 0:
+            logger.debug(message)
         raise Exception(message)
     except ApiException as e:
         if e.status != 404:
@@ -661,9 +686,13 @@ def wait_ns_deleted(name):
     wait_fixed=100,
 )
 def wait_pvc_deleted(name):
+    global attempt_counter
+    attempt_counter += 1
     try:
         client.CoreV1Api().read_namespaced_persistent_volume_claim(name, namespace)
         message = f"PVC {name} not deleted yet"
+        if attempt_counter % 5 == 0:
+            logger.debug(message)
         logger.debug(message)
         raise Exception(message)
     except ApiException as e:
@@ -676,10 +705,13 @@ def wait_pvc_deleted(name):
     wait_fixed=100,
 )
 def wait_pod_deleted(name):
+    global attempt_counter
+    attempt_counter += 1
     try:
         client.CoreV1Api().read_namespaced_pod(name, namespace)
         message = f"Pod {name} not deleted yet"
-        logger.debug(message)
+        if attempt_counter % 5 == 0:
+            logger.debug(message)
         raise Exception(message)
     except ApiException as e:
         if e.status != 404:
@@ -740,6 +772,8 @@ def create_pod(name, pvc, sleep=False):
     wait_fixed=100,
 )
 def wait_snapshot_deleted(name):
+    global attempt_counter
+    attempt_counter += 1
     try:
         client.CustomObjectsApi().get_namespaced_custom_object(
             group="snapshot.storage.k8s.io",
@@ -749,7 +783,8 @@ def wait_snapshot_deleted(name):
             name=name,
         )
         message = f"Snapshot {name} not deleted yet"
-        logger.debug(message)
+        if attempt_counter % 5 == 0:
+            logger.debug(message)
         raise Exception(message)
     except ApiException as e:
         if e.status != 404:
