@@ -121,7 +121,7 @@ def log_grpc_request(func):
             end = datetime.now()
             args.update(
                 {
-                    "response": MessageToDict(res) if is_json else request,
+                    "response": MessageToDict(res) if is_json else res,
                     "latency": end - start,
                     "endtime": end,
                     "success": True,
