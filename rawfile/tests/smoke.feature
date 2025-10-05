@@ -21,9 +21,9 @@ Feature: Basic Functionality
     | Immediate            | ReadWriteOnce | ext4    | Filesystem  | noatime       |
     | Immediate            | ReadWriteOnce | xfs     | Filesystem  | inode64       |
     | Immediate            | ReadWriteOnce | btrfs   | Filesystem  | null          |
-    # | Immediate            | ReadWriteOnce | null    | Block       | null          |
+    | Immediate            | ReadWriteOnce | null    | Block       | null          |
     | WaitForFirstConsumer | ReadWriteOnce | ext4    | Filesystem  | null          |
-    # | WaitForFirstConsumer | ReadWriteOnce | null    | Block       | null          |
+    | WaitForFirstConsumer | ReadWriteOnce | null    | Block       | null          |
 
   Scenario: Butter FS Snapshots and Restores
     Given a Persistent Volume Claim with Filesystem btrfs
