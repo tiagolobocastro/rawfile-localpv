@@ -12,7 +12,7 @@ pull_request_rules:
     actions:
       label:
         add:
-          - kind/backport2
+          - kind/backport3
       review:
         type: APPROVE
         message: "Automatically approved backport PR"
