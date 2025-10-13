@@ -8,11 +8,11 @@ merge_queue:
 pull_request_rules:
   - name: auto-label and approve backport PRs
     conditions:
-      - title~=backport
+      - title~=\(backport\)
     actions:
       label:
         add:
-          - kind/backport
+          - kind/backport2
       review:
         type: APPROVE
         message: "Automatically approved backport PR"
