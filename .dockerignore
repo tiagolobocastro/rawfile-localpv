@@ -1,5 +1,6 @@
 *
 !rawfile/
+rawfile/tests
 !pyproject.toml
 !docker-entrypoint.sh
 !poetry.lock

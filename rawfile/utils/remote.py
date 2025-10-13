@@ -1,16 +1,18 @@
 import os
-
 from consts import D_PERMS
 from utils.lock import VolLock
+import time
+from pathlib import Path
+from subprocess import CalledProcessError
+
+import utils.rawfile
+from utils.logs import logger
+from consts import RESOURCE_EXHAUSTED_EXIT_CODE, VOLUME_IN_USE_EXIT_CODE
+from volume_schema import LATEST_SCHEMA_VERSION
+from utils.snapshot_manager import manager as snapshot_manager
 
 
 def scrub(volume_id) -> int:
-    import time
-    from subprocess import CalledProcessError
-
-    import utils.rawfile
-    from consts import VOLUME_IN_USE_EXIT_CODE
-
     img_dir = utils.rawfile.img_dir(volume_id)
     if not img_dir.exists():
         return 0
@@ -23,21 +25,20 @@ def scrub(volume_id) -> int:
 
     now = time.time()
     deleted_at = now
-    gc_at = now  # TODO: GC sensitive PVCs later
+    gc_at = now
     utils.rawfile.patch_metadata(volume_id, {"deleted_at": deleted_at, "gc_at": gc_at})
     utils.rawfile.gc_if_needed(volume_id, dry_run=False)
     return img_size
 
 
-def init_rawfile(volume_id, size, thin_provision=False):
-    import time
-    from pathlib import Path
-    from subprocess import CalledProcessError
-
-    import utils.rawfile
-    from consts import RESOURCE_EXHAUSTED_EXIT_CODE
-    from volume_schema import LATEST_SCHEMA_VERSION
-
+def init_rawfile(
+    volume_id: str,
+    size: int,
+    thin_provision: bool = False,
+    freezefs: bool = False,
+    copy_on_write: bool | None = None,
+    snapshot_id: str | None = None,
+):
     if utils.rawfile.get_capacity() < size:
         raise CalledProcessError(returncode=RESOURCE_EXHAUSTED_EXIT_CODE, cmd="")
 
@@ -48,6 +49,8 @@ def init_rawfile(volume_id, size, thin_provision=False):
         img_file = Path(f"{img_dir}/disk.img")
         if img_file.exists() and os.path.getsize(img_file) >= size:
             return
+        snapshots_dir = Path(img_dir.joinpath("snapshots"))
+        os.makedirs(name=snapshots_dir, exist_ok=True)
         utils.rawfile.patch_metadata(
             volume_id,
             {
@@ -55,14 +58,28 @@ def init_rawfile(volume_id, size, thin_provision=False):
                 "volume_id": volume_id,
                 "created_at": time.time(),
                 "img_file": img_file.as_posix(),
+                "snapshots_dir": snapshots_dir.as_posix(),
                 "size": size,
                 "thin_provision": thin_provision,
+                "freezefs": freezefs,
+                "copy_on_write": copy_on_write,
             },
         )
+        img_file.touch()
+        if snapshot_id:
+            volume_id, name = snapshot_id.rsplit("/", 1)
+            metadata = utils.rawfile.metadata(volume_id)
+            size = max(size, metadata["size"])
+            thin_provision = metadata.get("thin_provision", False)
+            logger.info(
+                "Cloning volume data", source_volume=volume_id, source_snapshot=name
+            )
+            snapshot_manager.restore_snapshot(volume_id, name, img_file)
         if thin_provision:
             utils.rawfile.truncate(img_file, size)
-            return
-        utils.rawfile.fallocate(img_file, size)
+        else:
+            utils.rawfile.fallocate(img_file, size)
+        logger.info("Initialized volume", volume_id=volume_id, size=size)
 
 
 def get_capacity():

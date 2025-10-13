@@ -4,6 +4,7 @@ from subprocess import CalledProcessError
 import grpc
 from config import config
 from internal_svc import SIGNATURE_METADATA
+from utils.errors import VolumeCloningNotSupported
 import utils.rawfile
 from consts import (
     FORMAT_OPTIONS_KEY,
@@ -168,11 +169,12 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
                 Cap(rpc=Cap.RPC(type=Cap.RPC.GET_CAPACITY)),
                 Cap(rpc=Cap.RPC(type=Cap.RPC.EXPAND_VOLUME)),
                 Cap(rpc=Cap.RPC(type=Cap.RPC.CREATE_DELETE_SNAPSHOT)),
+                Cap(rpc=Cap.RPC(type=Cap.RPC.LIST_SNAPSHOTS)),
             ]
         )
 
     @log_grpc_request
-    def CreateVolume(self, request, context):
+    def CreateVolume(self, request: csi_pb2.CreateVolumeRequest, context):
         # TODO: volume_capabilities
 
         if len(request.volume_capabilities) != 1:
@@ -193,7 +195,25 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
 
         MIN_SIZE = 16 * 1024 * 1024  # 16MiB: can't format xfs with smaller volumes
         size = max(MIN_SIZE, request.capacity_range.required_bytes)
-
+        params = normalize_parameters(request.parameters)
+        thin_provision = str_to_bool(params.get("thinprovision", "no"))
+        snapshot_id = None
+        if request.volume_content_source:
+            if all(
+                (
+                    request.volume_content_source.snapshot,
+                    request.volume_content_source.snapshot.snapshot_id,
+                )
+            ):
+                snapshot_id = request.volume_content_source.snapshot.snapshot_id
+            elif all(
+                (
+                    request.volume_content_source.volume,
+                    request.volume_content_source.volume.volume_id,
+                )
+            ):
+                # TODO: Create temporary snapshot
+                raise VolumeCloningNotSupported()
         try:
             node_name = request.accessibility_requirements.preferred[0].segments[
                 NODE_NAME_TOPOLOGY_KEY
@@ -208,14 +228,20 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
                 grpc.StatusCode.INVALID_ARGUMENT, "Topology key not found... why?"
             )
 
-        params = normalize_parameters(request.parameters)
-        thin_provision = params.get("thinprovision", "no")
         format_options = params.get("formatoptions", "").strip()
+        copy_on_write_param = params.get("copyonwrite", None)
+        copy_on_write = None
+        if copy_on_write_param is not None:
+            copy_on_write = str_to_bool(copy_on_write_param)
+        freezefs = str_to_bool(params.get("freezefs", "no"))
         try:
             init_rawfile(
                 volume_id=request.name,
                 size=size,
-                thin_provision=str_to_bool(thin_provision),
+                thin_provision=thin_provision,
+                freezefs=freezefs,
+                copy_on_write=copy_on_write,
+                snapshot_id=snapshot_id,
             )
         except CalledProcessError as exc:
             if exc.returncode == RESOURCE_EXHAUSTED_EXIT_CODE:
@@ -239,6 +265,7 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
                 accessible_topology=[
                     csi_pb2.Topology(segments={NODE_NAME_TOPOLOGY_KEY: node_name})
                 ],
+                content_source=request.volume_content_source,
             )
         )
 

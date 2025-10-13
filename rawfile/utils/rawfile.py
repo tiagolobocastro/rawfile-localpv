@@ -55,16 +55,35 @@ def img_file(volume_id):
     return Path(metadata(volume_id)["img_file"])
 
 
+def snapshots_dir(volume_id):
+    return Path(f"{img_dir(volume_id)}/snapshots")
+
+
 def img_size(volume_id) -> int:
     return metadata(volume_id)["size"]
 
 
 def destroy(volume_id, dry_run=True):
     logger.info("Destroying Volume", volume_id=volume_id, dry_run=dry_run)
-    if not dry_run:
-        Path(img_file(volume_id)).unlink(missing_ok=True)
-        Path(meta_file(volume_id)).unlink(missing_ok=True)
-        Path(lock_file(volume_id)).unlink(missing_ok=True)
+    if dry_run:
+        return
+    snapshots = list(snapshots_dir(volume_id).glob("*"))
+    meta = metadata_or(volume_id)
+    if len(meta.get("reflink_attached", [])) > 0:
+        logger.warning(
+            "Volume has COW Snapshots attached, skipping destroy, will be destoyed when all snapshots are removed",
+            volume_id=volume_id,
+            snapshots=len(snapshots),
+        )
+        return
+    Path(img_file(volume_id)).unlink(missing_ok=True)
+    Path(meta_file(volume_id)).unlink(missing_ok=True)
+    Path(lock_file(volume_id)).unlink(missing_ok=True)
+    if len(snapshots) < 1:
+        try:
+            snapshots_dir(volume_id).rmdir()
+        except FileNotFoundError:
+            pass
         try:
             Path(img_dir(volume_id)).rmdir()
         except FileNotFoundError:
@@ -283,3 +302,33 @@ def be_symlink(path, to):
             return
     be_absent(path)
     path.symlink_to(to)
+
+
+def is_cow_supported(dir: Path) -> bool:
+    """Check if the filesystem at the given directory supports copy-on-write (COW) operations.
+
+    This function attempts to create a temporary file in the specified directory,
+    then creates a reflink (COW clone) of that file. If the operation is successful,
+    it indicates that the filesystem supports COW.
+
+    Args:
+        dir (Path): The directory to check for COW support.
+
+    Returns:
+        bool: True if COW is supported, False otherwise.
+    """
+    test_file = dir / ".cow_test_file"
+    clone_file = dir / ".cow_test_clone"
+    try:
+        with open(test_file, "wb") as f:
+            f.write(b"test")
+            f.flush()
+            os.fsync(f.fileno())
+        run(f"cp --reflink=always {test_file} {clone_file}")
+        return True
+    except Exception as e:
+        logger.opt(exception=e).warning("COW test failed")
+        return False
+    finally:
+        be_absent(test_file)
+        be_absent(clone_file)

@@ -69,9 +69,9 @@ Please follow the instructions from the [Install Guide](./docs/install-guide.md)
 - [x] Online expansion: If fs supports it (e.g. ext4, btrfs, xfs)
 - [ ] Online shrinking: If fs supports it (e.g. btrfs)
 - [ ] Offline expansion/shrinking
-- [ ] Volume Snapshots
-  - [x] Filesystem-level snapshots: `btrfs` supported
-  - [ ] Restores and Clones are not currently implemented
+- [x] Volume Snapshots
+  - ~~[x] Filesystem-level snapshots: `btrfs` supported~~
+  - [x] Block Level snapshots
 
 ---
 

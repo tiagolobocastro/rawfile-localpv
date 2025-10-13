@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Mapping
 import re
 from datetime import timedelta
 
@@ -42,7 +42,7 @@ def str_to_bool(value: str | None) -> bool:
     return False
 
 
-def normalize_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
+def normalize_parameters(parameters: Mapping[str, Any]) -> Mapping[str, Any]:
     return {k.lower(): v for k, v in parameters.items()}
 
 
