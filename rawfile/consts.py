@@ -15,3 +15,4 @@ FORMAT_OPTIONS_KEY = "openebs.io/rawfile/format-options"
 CSI_K8S_PVC_NAME_KEY = "csi.storage.k8s.io/pvc/name"
 GA_ID = "Ry1UWkdQNDY2MThX"
 GA_KEY = "OTFKR2RUZzlRd0duN1ktdnZ1TTR6QQ=="
+COW_SUPPORTED: bool | None = None

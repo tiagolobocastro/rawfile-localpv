@@ -1,20 +1,46 @@
 syntax = "proto3";
 
+import "google/protobuf/any.proto";
+
 service Internal {
+  // Expands raw file to new size.
   rpc ExpandRawFile (ExpandRawFileRequest) returns (ExpandRawFileResponse);
+  // Downloads raw file data and metadata.
+  rpc GetRawFile (GetRawFileRequest) returns (GetRawFileResponse);
 }
 
 message ExpandRawFileRequest {
+  // Volume ID of the raw file to be expanded.
   string volume_id = 1;
+  // New size in bytes.
   int64 new_size = 2;
 }
 
 enum ExpandRawFileStatus {
+  // Operation completed successfully.
   OK = 0;
+  // Not enough space to expand the raw file.
   RESOURCE_EXHAUSTED = 1;
 }
 
 message ExpandRawFileResponse {
+  // Is the raw file already attached?
   bool is_attached = 1;
+  // Status of the expand operation.
   ExpandRawFileStatus status = 2;
+}
+
+message GetRawFileRequest {
+  // Volume ID of the raw file to be downloaded.
+  string volume_id = 1;
+  // Whether to include file data in the response.
+  bool with_data = 2;
+  // Optional snapshot ID to get the raw file at a specific snapshot. will create a temporary snapshot if not provided.
+  optional string snapshot_id = 3;
+}
+message GetRawFileResponse {
+  // Metadata associated with the raw file.
+  map<string, google.protobuf.Any> metadata = 1;
+  // Rawfile data. Present only if with_data was true in the request.
+  bytes data = 2;
 }

@@ -177,6 +177,8 @@ storageClasses:
     enabled: true
     # -- Sets volumeBindingMode for StorageClass
     volumeBindingMode: WaitForFirstConsumer
+    # -- Make the storage class as default
+    isDefault: false
     # -- volumes are able to expand/resize or not?
     allowVolumeExpansion: true
     # -- Sets default reclaimPolicy for StorageClass volumes
@@ -184,11 +186,25 @@ storageClasses:
     # -- Sets filesystem type for volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default])
     fsType: ext4
     # -- Enables thin provisioning of volumes
-    thinProvision: false
+    thinProvision: ""
     # -- Sets mount options for filesystem volumes
     mountOptions: []
     # -- Sets format options for filesystem volumes
     formatOptions: []
+    # -- Enables CoW on storage class (defaults to autodetect)
+    copyOnWrite: ""
+    # -- Enables FreezeFS on storage class can be used to enable snapshotting of inused volumes when CoW is disabled/not supported (False by default)
+    freezeFs: ""
+
+snapshotClasses:
+  - # -- Name of the SnapshotClass
+    name: rawfile-localpv
+    # -- Enable or disable SnapshotClass
+    enabled: true
+    # -- Sets deletion policy for snapshots created using this class (Delete or Retain)
+    deletionPolicy: Delete
+    # -- Make the snapshot class as default
+    isDefault: false
 
 crds:
   # -- Disables the installation of all CRDs if set to false

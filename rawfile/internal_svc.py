@@ -1,6 +1,15 @@
+import time
 from internal import internal_pb2_grpc, internal_pb2
 from utils.logs import logger, log_grpc_request
-import utils.rawfile
+from utils.rawfile import (
+    metadata,
+    truncate,
+    fallocate,
+    img_file,
+    snapshots_dir,
+    get_capacity,
+    patch_metadata,
+)
 from utils.remote import is_attached
 from utils.lock import VolLock
 from typing import Final
@@ -13,11 +22,10 @@ class SignatureInterceptor(grpc.ServerInterceptor):
     def __init__(self, signature: str | None = None):
         self.signature = signature
 
-        def __init__(self):
-            def abort(ignored_request, context):
-                context.abort(grpc.StatusCode.UNAUTHENTICATED, "Invalid signature")
+        def abort(ignored_request, context):
+            context.abort(grpc.StatusCode.UNAUTHENTICATED, "Invalid signature")
 
-            self._abort_handler = grpc.unary_unary_rpc_method_handler(abort)
+        self._abort_handler = grpc.unary_unary_rpc_method_handler(abort)
 
     def intercept_service(self, continuation, handler_call_details):
         if self.signature:
@@ -42,26 +50,24 @@ class InternalServicer(internal_pb2_grpc.InternalServicer):
         self, request: internal_pb2.ExpandRawFileRequest, context
     ) -> internal_pb2.ExpandRawFileResponse:
         with VolLock(request.volume_id):
-            img_file = utils.rawfile.img_file(request.volume_id)
-            size_inc = (
-                request.new_size - utils.rawfile.metadata(request.volume_id)["size"]
-            )
+            img_file_path = img_file(request.volume_id)
+            size_inc = request.new_size - metadata(request.volume_id)["size"]
             if size_inc <= 0:
                 return internal_pb2.ExpandRawFileResponse(
                     is_attached=is_attached(request.volume_id),
                     status=internal_pb2.ExpandRawFileStatus.OK,
                 )
 
-            if utils.rawfile.get_capacity() < size_inc:
+            if get_capacity() < size_inc:
                 return internal_pb2.ExpandRawFileResponse(
                     is_attached=is_attached(request.volume_id),
                     status=internal_pb2.ExpandRawFileStatus.RESOURCE_EXHAUSTED,
                 )
-            if utils.rawfile.metadata(request.volume_id).get("thin_provision", False):
-                utils.rawfile.truncate(img_file, request.new_size)
+            if metadata(request.volume_id).get("thin_provision", False):
+                truncate(img_file_path, request.new_size)
             else:
-                utils.rawfile.fallocate(img_file, request.new_size)
-            utils.rawfile.patch_metadata(
+                fallocate(img_file_path, request.new_size)
+            patch_metadata(
                 request.volume_id,
                 {"size": request.new_size},
             )
@@ -69,3 +75,18 @@ class InternalServicer(internal_pb2_grpc.InternalServicer):
                 is_attached=is_attached(request.volume_id),
                 status=internal_pb2.ExpandRawFileStatus.OK,
             )
+
+    def GetRawFile(self, request: internal_pb2.GetRawFileRequest, context):
+        volume_metadata = metadata(request.volume_id)
+        snapshot_id = request.snapshot_id or f"tmp-snapshot-{int(time.time())}"
+        if not request.with_data:
+            return internal_pb2.GetRawFileResponse(
+                metadata=volume_metadata,
+                data=None,
+            )
+
+        with open(snapshots_dir(request.volume_id) / f"{snapshot_id}.img", "rb") as f:
+            while chunk := f.read(1024 * 1024):  # 1MB
+                yield internal_pb2.GetRawFileResponse(
+                    metadata=volume_metadata, data=chunk
+                )

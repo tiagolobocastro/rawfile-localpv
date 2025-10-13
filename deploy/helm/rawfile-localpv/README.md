@@ -82,12 +82,19 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.tolerations | string | `nil` | Tolerations for node component |
 | provisionerName | string | `"rawfile.csi.openebs.io"` | Name of the registered CSI Driver in the cluster |
 | reservedCapacity | string | `""` | Used to reserve capacity on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`] |
+| snapshotClasses[0].deletionPolicy | string | `"Delete"` | Sets deletion policy for snapshots created using this class (Delete or Retain) |
+| snapshotClasses[0].enabled | bool | `true` | Enable or disable SnapshotClass |
+| snapshotClasses[0].isDefault | bool | `false` | Make the snapshot class as default |
+| snapshotClasses[0].name | string | `"rawfile-localpv"` | Name of the SnapshotClass |
 | storageClasses[0].allowVolumeExpansion | bool | `true` | volumes are able to expand/resize or not? |
+| storageClasses[0].copyOnWrite | string | `""` | Enables CoW on storage class (defaults to autodetect) |
 | storageClasses[0].enabled | bool | `true` | Enable or disable StorageClass |
 | storageClasses[0].formatOptions | list | `[]` | Sets format options for filesystem volumes |
+| storageClasses[0].freezeFs | string | `""` | Enables FreezeFS on storage class can be used to enable snapshotting of inused volumes when CoW is disabled/not supported (False by default) |
 | storageClasses[0].fsType | string | `"ext4"` | Sets filesystem type for volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default]) |
+| storageClasses[0].isDefault | bool | `false` | Make the storage class as default |
 | storageClasses[0].mountOptions | list | `[]` | Sets mount options for filesystem volumes |
 | storageClasses[0].name | string | `"rawfile-localpv"` | Name of the StorageClass |
 | storageClasses[0].reclaimPolicy | string | `"Delete"` | Sets default reclaimPolicy for StorageClass volumes |
-| storageClasses[0].thinProvision | bool | `false` | Enables thin provisioning of volumes |
+| storageClasses[0].thinProvision | string | `""` | Enables thin provisioning of volumes |
 | storageClasses[0].volumeBindingMode | string | `"WaitForFirstConsumer"` | Sets volumeBindingMode for StorageClass |

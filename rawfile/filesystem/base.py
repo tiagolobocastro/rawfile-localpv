@@ -1,10 +1,16 @@
 from abc import ABC, ABCMeta, abstractmethod
+from warnings import deprecated
+from utils.logs import logger
 import subprocess
 from .utils import get_device_for_mountpoint, get_device_fs
 from pathlib import Path
 from typing import Self
 from utils.commands import run
 from utils.errors import InvalidDeviceForMountpointError
+
+fs_snapshot_deprecated = deprecated(
+    "Filesystem level snapshots are not supported anymore"
+)
 
 
 class NotSupportedError(NotImplementedError):
@@ -54,6 +60,22 @@ class FileSystemMountError(FileSystemOperationError):
     operation = "mount"
 
 
+class FileSystemFreezeError(FileSystemOperationError):
+    """
+    Exception raised when filesystem freeze has been failed.
+    """
+
+    operation = "freeze"
+
+
+class FileSystemUnFreezeError(FileSystemOperationError):
+    """
+    Exception raised when filesystem freeze has been failed.
+    """
+
+    operation = "unfreeze"
+
+
 class FileSystemUnmountError(FileSystemOperationError):
     """
     Exception raised when filesystem unmount has been failed.
@@ -70,17 +92,10 @@ class FileSystemResizeError(FileSystemOperationError):
     operation = "resize"
 
 
-class FileSystemCreateSnapshotError(FileSystemOperationError):
-    """
-    Exception raised when filesystem resize has been failed.
-    """
-
-    operation = "create snapshot"
-
-
+@fs_snapshot_deprecated
 class FileSystemDeleteSnapshotError(FileSystemOperationError):
     """
-    Exception raised when filesystem resize has been failed.
+    Exception raised when filesystem delete snapshot has been failed.
     """
 
     operation = "delete snapshot"
@@ -149,25 +164,6 @@ class FileSystem(ABC, metaclass=ABCMeta):
             if not (hasattr(subclass, method) and callable(getattr(subclass, method))):
                 return False
         return True
-
-    def create_snapshot(self, name: str):
-        """
-        Create a snapshot of the current state of the file system.
-        """
-        raise NotSupportedError("create_snapshot")
-
-    def delete_snapshot(self, name: str):
-        """
-        Delete the selected snapshot of the file system.
-        """
-        raise NotSupportedError("delete_snapshot")
-
-    def restore_snapshot(self, name: str):
-        # FIXME: We will probably have some other parameters
-        """
-        Delete the selected snapshot of the file system.
-        """
-        raise NotSupportedError("restore_snapshot")
 
     def format_fs(self, options: list[str] = []) -> str | None:
         """
@@ -252,6 +248,13 @@ class FileSystem(ABC, metaclass=ABCMeta):
             raise FileSystemUnmountError.from_exc(e, self.__filesystem__)
         return output
 
+    @fs_snapshot_deprecated
+    def delete_snapshot(self, name: str):
+        """
+        Delete the selected snapshot of the file system.
+        """
+        raise NotSupportedError("delete_snapshot")
+
     @abstractmethod
     def resize(self) -> str | None:
         """
@@ -272,3 +275,53 @@ class FileSystem(ABC, metaclass=ABCMeta):
             self.format_fs(format_options)
 
         self.mount(mountpoint, mount_options)
+
+    def freeze(self):
+        """
+        Freeze the filesystem
+
+        returns the output of the freeze command (optional).
+        """
+        try:
+            return run(
+                f"fsfreeze --freeze {self.mountpoint}",
+                check=True,
+                capture_output=True,
+            ).stdout.decode()
+        except subprocess.CalledProcessError as e:
+            if "Device or resource busy" in e.stderr.decode().strip():
+                logger.warning(
+                    "Filesystem already frozen.",
+                    filesystem=self.__filesystem__,
+                    mountpoint=self.mountpoint,
+                    device=self.device,
+                )
+                return
+            raise FileSystemFreezeError.from_exc(e, self.__filesystem__)
+        except Exception as e:
+            raise FileSystemFreezeError.from_exc(e, self.__filesystem__)
+
+    def unfreeze(self):
+        """
+        Unfreeze the filesystem
+
+        returns the output of the unfreeze command (optional).
+        """
+        try:
+            return run(
+                f"fsfreeze --unfreeze {self.mountpoint}",
+                check=True,
+                capture_output=True,
+            ).stdout.decode()
+        except subprocess.CalledProcessError as e:
+            if "Invalid argument" in e.stderr.decode().strip():
+                logger.warning(
+                    "Filesystem is not freezed.",
+                    filesystem=self.__filesystem__,
+                    mountpoint=self.mountpoint,
+                    device=self.device,
+                )
+                return
+            raise FileSystemUnFreezeError.from_exc(e, self.__filesystem__)
+        except Exception as e:
+            raise FileSystemUnFreezeError.from_exc(e, self.__filesystem__)

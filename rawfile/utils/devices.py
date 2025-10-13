@@ -32,20 +32,26 @@ def device_stats(dev):
     return {"dev_size": dev_size}
 
 
-def device_to_mountpoint(device: str) -> None | str:
+def device_to_mountpoint(
+    device: str, first_only: bool = True
+) -> None | str | list[str]:
     try:
         output = run(
-            f"findmnt --json --first-only {device}",
+            f"findmnt --json {'--first-only' if first_only else ''} {device}",
             check=True,
             capture_output=True,
         ).stdout.decode()
         data = json.loads(output)
-        return data["filesystems"][0]["target"]
+        return (
+            data["filesystems"][0]["target"]
+            if first_only
+            else [fs["target"] for fs in data["filesystems"]]
+        )
     except subprocess.CalledProcessError:
         return None
 
 
-def mountpoint_to_dev(mountpoint):
+def mountpoint_to_dev(mountpoint) -> str | None:
     assert Path(mountpoint).is_dir()
     res = run(
         f"findmnt --json --first-only --nofsroot --mountpoint {mountpoint}",

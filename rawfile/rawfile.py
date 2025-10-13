@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from concurrent import futures
+from concurrent.futures.thread import ThreadPoolExecutor
+from pathlib import Path
 import signal
 import bd2fs
 from config.model import CSIDriverCmd
@@ -9,12 +11,28 @@ from datetime import datetime
 from csi import csi_pb2_grpc
 from internal import internal_pb2_grpc
 from metrics import expose_metrics
-from utils.rawfile import gc_all_volumes, migrate_all_volume_schemas
+from utils import task_manager
+from utils.rawfile import gc_all_volumes, is_cow_supported, migrate_all_volume_schemas
 from utils.logs import init as init_logging, logger
 from internal_svc import InternalServicer, SignatureInterceptor
-
+import consts
 from analytics.ga4 import run_ping, shutdown_event_worker, run_event_worker
 from orchestrator.k8s import node_ip_mapping
+import os
+
+
+def node_driver_preflight_checks():
+    data_dir = Path(consts.DATA_DIR)
+    if not data_dir.exists():
+        logger.info("Creating data directory", path=str(data_dir))
+        data_dir.mkdir(parents=True, exist_ok=True)
+    if not data_dir.is_dir():
+        raise RuntimeError(f"{data_dir} is not a directory")
+    if not os.access(data_dir, os.W_OK | os.R_OK | os.X_OK):
+        raise RuntimeError(f"{data_dir} is not accessible")
+    data_dir.chmod(consts.D_PERMS)
+    migrate_all_volume_schemas()
+    consts.COW_SUPPORTED = is_cow_supported(data_dir)
 
 
 def csi_driver(driver_config: CSIDriverCmd):
@@ -34,15 +52,22 @@ def csi_driver(driver_config: CSIDriverCmd):
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=int(driver_config.grpc_workers))
     )
+    bg_task_executor = ThreadPoolExecutor(max_workers=5)
+    _task_manager = task_manager.TaskManager(bg_task_executor)
     internal_server = None
     csi_pb2_grpc.add_IdentityServicer_to_server(
-        bd2fs.Bd2FsIdentityServicer(rawfile_servicer.RawFileIdentityServicer()), server
+        bd2fs.Bd2FsIdentityServicer(
+            rawfile_servicer.RawFileIdentityServicer(),
+            task_manager=_task_manager,
+        ),
+        server,
     )
     if driver_config.plugin_type == "node":
-        migrate_all_volume_schemas()
+        node_driver_preflight_checks()
         csi_pb2_grpc.add_NodeServicer_to_server(
             bd2fs.Bd2FsNodeServicer(
-                rawfile_servicer.RawFileNodeServicer(node_name=driver_config.nodeid)
+                rawfile_servicer.RawFileNodeServicer(node_name=driver_config.nodeid),
+                task_manager=_task_manager,
             ),
             server,
         )
@@ -51,7 +76,7 @@ def csi_driver(driver_config: CSIDriverCmd):
             futures.ThreadPoolExecutor(
                 max_workers=int(driver_config.internal_grpc_workers)
             ),
-            interceptors=(SignatureInterceptor(driver_config.internal_signature),),
+            interceptors=[SignatureInterceptor(driver_config.internal_signature)],
         )
         internal_pb2_grpc.add_InternalServicer_to_server(
             InternalServicer(), internal_server
@@ -63,7 +88,10 @@ def csi_driver(driver_config: CSIDriverCmd):
     # NOTE: Controller methods are exposed on node plugin too because we are using distributed-snapshotting
     # and Snapshotting methods are only available in Controller Service right now
     csi_pb2_grpc.add_ControllerServicer_to_server(
-        bd2fs.Bd2FsControllerServicer(rawfile_servicer.RawFileControllerServicer()),
+        bd2fs.Bd2FsControllerServicer(
+            rawfile_servicer.RawFileControllerServicer(),
+            task_manager=_task_manager,
+        ),
         server,
     )
     server.add_insecure_port(str(driver_config.endpoint))
@@ -83,6 +111,7 @@ def csi_driver(driver_config: CSIDriverCmd):
         server.stop(grace_seconds)
         if internal_server:
             internal_server.stop(grace_seconds)
+        _task_manager.shutdown(grace_seconds)
         end = datetime.now()
         elapsed = end - start
 

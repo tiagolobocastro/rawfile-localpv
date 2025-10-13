@@ -7,36 +7,47 @@ import time
 from csi import csi_pb2, csi_pb2_grpc
 from csi.csi_pb2 import (
     CreateVolumeRequest,
+    ListSnapshotsResponse,
     NodeExpandVolumeRequest,
     NodePublishVolumeRequest,
     NodeStageVolumeRequest,
     NodeUnpublishVolumeRequest,
     NodeUnstageVolumeRequest,
+    Snapshot,
 )
 from declarative import (
     mount,
     unmount,
 )
-from utils.rawfile import be_absent
+from utils import task_manager
+from utils.rawfile import (
+    attach_loop,
+    be_absent,
+    detach_loops,
+    gc_if_needed,
+    img_file,
+    metadata,
+)
 from google.protobuf.timestamp_pb2 import Timestamp
 from utils.logs import log_grpc_request
 from filesystem import get_from_device_or_fallback, from_device
 from filesystem.utils import get_device_for_mountpoint
 from rawfile_servicer import check_access_type, get_access_type
 from utils.rawfile import (
-    img_file,
-    attach_loop,
     AccessType,
-    detach_loops,
 )
 from utils.devices import path_stats
 from filesystem.base import UnknownFileSystemError
 from utils.lock import VolLock
+from utils.task_manager import TaskManager
+from utils.snapshot_manager import manager as snapshot_manager
+import consts
 
 
 class Bd2FsIdentityServicer(csi_pb2_grpc.IdentityServicer):
-    def __init__(self, bds: csi_pb2_grpc.IdentityServicer):
+    def __init__(self, bds: csi_pb2_grpc.IdentityServicer, task_manager: TaskManager):
         self.bds = bds
+        self._task_manager = task_manager
 
     @log_grpc_request
     def GetPluginInfo(self, request, context):
@@ -52,8 +63,9 @@ class Bd2FsIdentityServicer(csi_pb2_grpc.IdentityServicer):
 
 
 class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
-    def __init__(self, bds: csi_pb2_grpc.NodeServicer):
+    def __init__(self, bds: csi_pb2_grpc.NodeServicer, task_manager: TaskManager):
         self.bds = bds
+        self._task_manager = task_manager
 
     # @log_grpc_request
     def NodeGetCapabilities(self, request, context):
@@ -223,15 +235,16 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
 
 
 class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
-    def __init__(self, bds: csi_pb2_grpc.ControllerServicer):
+    def __init__(self, bds: csi_pb2_grpc.ControllerServicer, task_manager: TaskManager):
         self.bds = bds
+        self._task_manager = task_manager
 
     @log_grpc_request
     def ControllerGetCapabilities(self, request, context):
         return self.bds.ControllerGetCapabilities(request, context)
 
     @log_grpc_request
-    def CreateVolume(self, request, context):
+    def CreateVolume(self, request: CreateVolumeRequest, context):
         if len(request.volume_capabilities) != 1:
             context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT, "Exactly one cap is supported"
@@ -252,16 +265,14 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
         access_type = volume_capability.WhichOneof("access_type")
         check_access_type(access_type)
 
-        bd_request = CreateVolumeRequest()
-        bd_request.CopyFrom(request)
-        bd_request.capacity_range.required_bytes = max(
+        request.capacity_range.required_bytes = max(
             request.capacity_range.required_bytes, 10 * 1024 * 1024
         )  # At least 10MB
 
         # FIXME: update access_type
         # bd_request.volume_capabilities[0].block = ""
         # bd_request.volume_capabilities[0].mount = None
-        return self.bds.CreateVolume(bd_request, context)
+        return self.bds.CreateVolume(request, context)
 
     @log_grpc_request
     def DeleteVolume(self, request, context):
@@ -284,55 +295,125 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
     @log_grpc_request
     def CreateSnapshot(self, request: csi_pb2.CreateSnapshotRequest, context):
         with VolLock(request.source_volume_id):
-            file = img_file(request.source_volume_id)
-            loop_dev = attach_loop(file)
-            fs = from_device(loop_dev)
-            if not fs:
-                raise UnknownFileSystemError(
-                    device=loop_dev, volume_id=request.source_volume_id
-                )
-            fs.create_snapshot(name=request.name)
-
-            if fs.mountpoint is None:
-                detach_loops(file)
-
-            creation_time_ns = time.time_ns()
-            snapshot_id = f"{request.source_volume_id}/{request.name}"
-            # TODO: detach loopdev when we get seperated loop devices
-            nano = 10**9
-            return csi_pb2.CreateSnapshotResponse(
-                snapshot=csi_pb2.Snapshot(
-                    size_bytes=0,
-                    snapshot_id=snapshot_id,
-                    source_volume_id=request.source_volume_id,
-                    creation_time=Timestamp(
-                        seconds=creation_time_ns // nano, nanos=creation_time_ns % nano
-                    ),
-                    ready_to_use=True,
-                )
+            volume_meta = metadata(request.source_volume_id)
+            freezefs = volume_meta.get("freezefs", False)
+            copy_on_write_param = volume_meta.get("copy_on_write", None)
+            copy_on_write = (
+                copy_on_write_param
+                if copy_on_write_param is not None
+                else consts.COW_SUPPORTED
             )
+
+        def _get_current_snapshot():
+            _current = snapshot_manager.list_snapshots(
+                volume_id=request.source_volume_id, snapshot_name=request.name
+            )
+            if not _current.data:
+                return None
+            return _current.data[0]
+
+        nano = 10**9
+        current = _get_current_snapshot()
+        if not current:
+            self._task_manager.run_task(
+                task_manager.TaskName.CREATE_SNAPSHOT,
+                volume_id=request.source_volume_id,
+                name=request.name,
+                copy_on_write=copy_on_write,
+                freeze_fs=freezefs,
+            )
+        start_time = time.time()
+        while time.time() - start_time < 30:
+            current = _get_current_snapshot()
+            if current and current.ready:
+                return csi_pb2.CreateSnapshotResponse(
+                    snapshot=csi_pb2.Snapshot(
+                        size_bytes=current.size_bytes,
+                        snapshot_id=current.snapshot_id,
+                        source_volume_id=current.volume_id,
+                        ready_to_use=current.ready,
+                        creation_time=Timestamp(
+                            seconds=int(current.creation_time),
+                            nanos=int((current.creation_time % 1) * nano),
+                        ),
+                    )
+                )
+            time.sleep(0.5)
+        creation_time_ns = time.time_ns()
+        snapshot_id = f"{request.source_volume_id}/{request.name}"
+        return csi_pb2.CreateSnapshotResponse(
+            snapshot=csi_pb2.Snapshot(
+                size_bytes=0,
+                snapshot_id=snapshot_id,
+                source_volume_id=request.source_volume_id,
+                ready_to_use=False,
+                creation_time=Timestamp(
+                    seconds=creation_time_ns // nano,
+                    nanos=creation_time_ns % nano,
+                ),
+            )
+        )
 
     @log_grpc_request
     def DeleteSnapshot(self, request: csi_pb2.DeleteSnapshotRequest, context):
         snapshot_id = request.snapshot_id
         volume_id, name = snapshot_id.rsplit("/", 1)
+        if (
+            len(
+                snapshot_manager.list_snapshots(
+                    volume_id=volume_id, snapshot_name=name
+                ).data
+            )
+            < 0
+        ):
+            with VolLock(volume_id):
+                file = img_file(volume_id)
 
+                loop_dev = attach_loop(file)
+                fs = from_device(loop_dev)
+                if not fs:
+                    raise UnknownFileSystemError(device=loop_dev, volume_id=volume_id)
+                fs.delete_snapshot(name=name)
+
+                if fs.mountpoint is None:
+                    detach_loops(file)
+
+                return csi_pb2.DeleteSnapshotResponse()
+        snapshot_manager.delete_snapshot(volume_id, name)
+        gc_if_needed(volume_id)
+        return csi_pb2.DeleteSnapshotResponse()
+
+    @log_grpc_request
+    def ListSnapshots(self, request: csi_pb2.ListSnapshotsRequest, context):
+        volume_id, name = None, None
+        if request.snapshot_id:
+            snapshot_id = request.snapshot_id
+            volume_id, name = snapshot_id.rsplit("/", 1)
+        offset = None
         try:
-            if not img_file(volume_id).exists():
-                raise FileNotFoundError
-        except FileNotFoundError:
-            return csi_pb2.DeleteSnapshotResponse()
-
-        with VolLock(volume_id):
-            file = img_file(volume_id)
-
-            loop_dev = attach_loop(file)
-            fs = from_device(loop_dev)
-            if not fs:
-                raise UnknownFileSystemError(device=loop_dev, volume_id=volume_id)
-            fs.delete_snapshot(name=name)
-
-            if fs.mountpoint is None:
-                detach_loops(file)
-
-            return csi_pb2.DeleteSnapshotResponse()
+            offset = int(request.starting_token) if request.starting_token else None
+        except ValueError:
+            context.abort(grpc.StatusCode.INVALID_ARGUMENT, "invalid starting_token")
+        limit = request.max_entries or None
+        snapshot_list = snapshot_manager.list_snapshots(
+            volume_id=volume_id, snapshot_name=name, offset=offset, limit=limit
+        )
+        nano = 10**9
+        return csi_pb2.ListSnapshotsResponse(
+            entries=[
+                ListSnapshotsResponse.Entry(
+                    snapshot=Snapshot(
+                        size_bytes=snapshot.size_bytes,
+                        snapshot_id=snapshot.snapshot_id,
+                        source_volume_id=snapshot.volume_id,
+                        creation_time=Timestamp(
+                            seconds=int(snapshot.creation_time),
+                            nanos=int((snapshot.creation_time % 1) * nano),
+                        ),
+                        ready_to_use=snapshot.ready,
+                    )
+                )
+                for snapshot in snapshot_list.data
+            ],
+            next_token=str(snapshot_list.next_token),
+        )
