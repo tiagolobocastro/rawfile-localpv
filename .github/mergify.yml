@@ -16,3 +16,10 @@ pull_request_rules:
       review:
         type: APPROVE
         message: "Automatically approved backport PR"
+  - name: a2
+    conditions:
+      - title~=\(backport\)
+    actions:
+      label:
+        add:
+          - kind/backport4
