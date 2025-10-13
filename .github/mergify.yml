@@ -6,13 +6,13 @@ queue_rules:
 merge_queue:
   max_parallel_checks: 1
 pull_request_rules:
-  - name: auto-label and approve backport PRs
+  - name: a1
     conditions:
       - title~=\(backport 1\)$
     actions:
       label:
         add:
-          - kind/backport3
+          - kind/backport1
       review:
         type: APPROVE
         message: "Automatically approved backport PR"
@@ -22,4 +22,25 @@ pull_request_rules:
     actions:
       label:
         add:
+          - kind/backport2
+  - name: a3
+    conditions:
+      - title~=\(backport\)$
+    actions:
+      label:
+        add:
+          - kind/backport3
+  - name: a4
+    conditions:
+      - title~=\(backport \#1\)$
+    actions:
+      label:
+        add:
           - kind/backport4
+  - name: a5
+    conditions:
+      - title~=\(backport \#[0-9]+\)$
+    actions:
+      label:
+        add:
+          - kind/backport5
