@@ -44,3 +44,11 @@ pull_request_rules:
       label:
         add:
           - kind/backport5
+  - name: a6
+    conditions:
+      - author=mergify[bot]
+      - title~=\(backport \#[0-9]+\)$
+    actions:
+      label:
+        add:
+          - kind/backport6
