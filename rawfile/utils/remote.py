@@ -38,6 +38,7 @@ def init_rawfile(
     freezefs: bool = False,
     copy_on_write: bool | None = None,
     snapshot_id: str | None = None,
+    temporary_snapshot: bool = False,
 ):
     if utils.rawfile.get_capacity() < size:
         raise CalledProcessError(returncode=RESOURCE_EXHAUSTED_EXIT_CODE, cmd="")
@@ -51,6 +52,7 @@ def init_rawfile(
             return
         snapshots_dir = Path(img_dir.joinpath("snapshots"))
         os.makedirs(name=snapshots_dir, exist_ok=True)
+        os.makedirs(name=snapshots_dir.joinpath("temp"), exist_ok=True)
         utils.rawfile.patch_metadata(
             volume_id,
             {
@@ -74,7 +76,9 @@ def init_rawfile(
             logger.info(
                 "Cloning volume data", source_volume=volume_id, source_snapshot=name
             )
-            snapshot_manager.restore_snapshot(volume_id, name, img_file)
+            snapshot_manager.restore_snapshot(
+                volume_id, name, img_file, temporary_snapshot
+            )
         if thin_provision:
             utils.rawfile.truncate(img_file, size)
         else:
@@ -83,15 +87,11 @@ def init_rawfile(
 
 
 def get_capacity():
-    import utils.rawfile
-
     cap = utils.rawfile.get_capacity()
     return max(0, cap)
 
 
 def is_attached(volume_id):
-    import utils.rawfile
-
     img_dir = utils.rawfile.img_dir(volume_id)
     if not img_dir.exists():
         return False
