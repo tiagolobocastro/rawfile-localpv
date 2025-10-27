@@ -5,9 +5,9 @@ on:
   push:
     branches:
       - develop
-      - 'release/**'
+      - "release/**"
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
 
 jobs:
   changes:
@@ -17,6 +17,9 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs-only == 'false' }}
     uses: ./.github/workflows/helm-chart.yml
   k8s-ci:
+    permissions:
+      checks: write
+      pull-requests: write
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs-only == 'false' }}
     uses: ./.github/workflows/k8s.yml
