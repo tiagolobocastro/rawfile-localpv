@@ -1,4 +1,4 @@
-FROM python:3.13-slim-bookworm AS base
+FROM python:3.13-slim-trixie AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -62,10 +62,7 @@ RUN python -m \
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 
 ARG IMAGE_TAG
-ARG IMAGE_REPOSITORY
 ARG PROVISIONER_VERSION
-ENV IMAGE_REPOSITORY=${IMAGE_REPOSITORY}
-ENV IMAGE_TAG=${IMAGE_TAG}
 ENV PROVISIONER_VERSION=${PROVISIONER_VERSION}
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

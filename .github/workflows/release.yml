@@ -2,7 +2,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+**'
+      - "v[0-9]+.[0-9]+.[0-9]+**"
 
 jobs:
   needs-release:
@@ -48,6 +48,8 @@ jobs:
       namespace: ${{ needs.needs-release.outputs.namespace }}
 
   k8s:
+    permissions:
+      checks: write
     uses: ./.github/workflows/k8s.yml
     needs:
       - needs-release
@@ -88,13 +90,15 @@ jobs:
         run: exit 0
 
   released-check:
+    permissions:
+      checks: write
     uses: ./.github/workflows/k8s.yml
     with:
       release-check: true
       release-tag: v${{ needs.needs-release.outputs.version }}
       registry: ${{ needs.needs-release.outputs.registry }}
       namespace: ${{ needs.needs-release.outputs.namespace }}
-      chart: 'https://${{ github.repository_owner }}.github.io/rawfile-localpv/'
+      chart: "https://${{ github.repository_owner }}.github.io/rawfile-localpv/"
     needs:
       - release
       - needs-release

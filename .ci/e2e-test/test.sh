@@ -6,6 +6,7 @@ set -ex
 
 K8S_VERSION=$(cat "$SCRIPT_DIR/../../.kube-version")
 K8S_CLUSTER=${K8S_CLUSTER:-"kind"}
+JUNIT_REPORT_DIR=${JUNIT_REPORT_DIR:-/tmp/ginkgo-junit}
 
 DOWNLOAD="true"
 if [ -f "$SCRIPT_DIR/e2e.test" ]; then
@@ -16,7 +17,10 @@ fi
 
 cd $(dirname $0)
 if [ "$DOWNLOAD" = "true" ]; then
-  command -v curl >/dev/null 2>&1 || { echo >&2 "curl is not installed. Aborting."; exit 1; }
+  command -v curl >/dev/null 2>&1 || {
+    echo >&2 "curl is not installed. Aborting."
+    exit 1
+  }
   curl --location https://dl.k8s.io/$K8S_VERSION/kubernetes-test-linux-amd64.tar.gz | tar --strip-components=3 --no-same-owner -zxf - kubernetes/test/bin/e2e.test kubernetes/test/bin/ginkgo
 fi
 
@@ -34,6 +38,7 @@ fi
   -focus='External.Storage' \
   -skip='\[Feature:|\[Disruptive\]|\[Serial\]' \
   --fail-fast \
+  --junit-report="${JUNIT_REPORT_DIR}/basic.xml" \
   ./e2e.test \
   -- \
   -storage.testdriver=rawfile-driver.yaml
@@ -41,6 +46,7 @@ fi
 ./ginkgo -v \
   -focus='External.Storage.*(\[Feature:|\[Disruptive\]|\[Serial\])' \
   --fail-fast \
+  --junit-report="${JUNIT_REPORT_DIR}/advanced.xml" \
   ./e2e.test \
   -- \
   -storage.testdriver=rawfile-driver.yaml

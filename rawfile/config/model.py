@@ -120,16 +120,6 @@ class RawFileCmd(
         default=FileSystemName.EXT4,
         description="Default filesystem used where creating volumes and fsType is not specified in storage class parameters",
     )
-    image_registry: str | None = Field(
-        description="Registry of the image used for task pods, etc.",
-        default=None,
-    )
-    image_repository: str = Field(
-        description="Repository of the image used for task pods, etc.",
-    )
-    image_tag: str = Field(
-        description="Image Tag of driver used for task pods, etc.",
-    )
     namespace: str = Field(
         description="K8s Namespace of the driver",
     )
