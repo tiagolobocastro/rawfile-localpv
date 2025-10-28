@@ -9,7 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.13"
 grpcio-tools = "^1.75.1"
-grpcio = "^1.75.1"
+grpcio = "^1.76.0"
 click = "^8.3.0"
 pyyaml = "^6.0.3"
 prometheus-client = "^0.23.1"
