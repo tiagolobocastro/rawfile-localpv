@@ -78,6 +78,10 @@ Please follow the instructions from the [Install Guide](./docs/install-guide.md)
 
 ---
 
+## Project Activity
+
+![Alt](https://repobeats.axiom.co/api/embed/09ac8b1ccb26584b212fae37e18cf4d5b6a1f761.svg "Repobeats analytics image")
+
 ## License compliance
 
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B162%2Fgithub.com%2Fopenebs%2Frawfile-localpv.svg?type=large&issueType=license)](https://app.fossa.com/projects/custom%2B162%2Fgithub.com%2Fopenebs%2Frawfile-localpv?ref=badge_large&issueType=license)
