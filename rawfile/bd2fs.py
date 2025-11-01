@@ -24,7 +24,6 @@ from utils.rawfile import (
     attach_loop,
     be_absent,
     detach_loops,
-    gc_if_needed,
     img_file,
     metadata,
 )
@@ -41,13 +40,13 @@ from filesystem.base import UnknownFileSystemError
 from utils.lock import VolLock
 from utils.task_manager import TaskManager
 from utils.snapshot_manager import manager as snapshot_manager
+from utils.volume_manager import manager as volume_manager
 import consts
 
 
 class Bd2FsIdentityServicer(csi_pb2_grpc.IdentityServicer):
-    def __init__(self, bds: csi_pb2_grpc.IdentityServicer, task_manager: TaskManager):
+    def __init__(self, bds: csi_pb2_grpc.IdentityServicer):
         self.bds = bds
-        self._task_manager = task_manager
 
     @log_grpc_request
     def GetPluginInfo(self, request, context):
@@ -253,9 +252,9 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
         volume_capability = request.volume_capabilities[0]
 
         AccessModeEnum = csi_pb2.VolumeCapability.AccessMode.Mode
-        if volume_capability.access_mode.mode not in [
-            AccessModeEnum.SINGLE_NODE_WRITER
-        ]:
+        if volume_capability.access_mode.mode not in (
+            AccessModeEnum.SINGLE_NODE_WRITER,
+        ):
             access_mode = AccessModeEnum.Name(volume_capability.access_mode.mode)
             context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
@@ -266,8 +265,8 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
         check_access_type(access_type)
 
         request.capacity_range.required_bytes = max(
-            request.capacity_range.required_bytes, 10 * 1024 * 1024
-        )  # At least 10MB
+            request.capacity_range.required_bytes, 16 * 1024 * 1024
+        )  # At least 16MB (XFS Limitation)
 
         # FIXME: update access_type
         # bd_request.volume_capabilities[0].block = ""
@@ -276,13 +275,7 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def DeleteVolume(self, request, context):
-        try:
-            lock = VolLock(request.volume_id)
-        except FileNotFoundError:
-            return csi_pb2.DeleteVolumeResponse()
-        else:
-            with lock:
-                return self.bds.DeleteVolume(request, context)
+        return self.bds.DeleteVolume(request, context)
 
     def GetCapacity(self, request, context):
         return self.bds.GetCapacity(request, context)
@@ -380,7 +373,7 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
                 return csi_pb2.DeleteSnapshotResponse()
         snapshot_manager.delete_snapshot(volume_id, name)
-        gc_if_needed(volume_id)
+        volume_manager.gc_if_needed(volume_id)
         return csi_pb2.DeleteSnapshotResponse()
 
     @log_grpc_request

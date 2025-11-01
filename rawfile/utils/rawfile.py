@@ -1,22 +1,15 @@
-import glob
 import json
-import time
 from contextlib import contextmanager
-from os import umask
-from os.path import basename, dirname
 from pathlib import Path
 from typing import Any
 
 from utils.logs import logger
 
 from consts import D_PERMS, DATA_DIR, F_PERMS, OWNER_UMASK
-from volume_schema import LATEST_SCHEMA_VERSION, migrate_to
 import os
 from enum import Enum
 from utils.commands import run
 from utils.fallocate import fallocate as linux_fallocate
-from utils.devices import path_stats, device_to_mountpoint
-from config import config
 
 
 class AccessType(Enum):
@@ -65,67 +58,13 @@ def img_size(volume_id) -> int:
     return metadata(volume_id)["size"]
 
 
-def destroy(volume_id, dry_run=True):
-    def rmdir(path: Path):
-        try:
-            path.rmdir()
-        except FileNotFoundError:
-            pass
-
-    logger.info("Destroying Volume", volume_id=volume_id, dry_run=dry_run)
-    if dry_run:
-        return
-    snapshots = list(snapshots_dir(volume_id).glob("*"))
-    temp_snapshots = list(snapshots_dir(volume_id, temporary=True).glob("*"))
-    total_snapshots = len(snapshots) + len(temp_snapshots)
-    meta = metadata_or(volume_id)
-    if len(meta.get("reflink_attached", [])) > 0:
-        logger.warning(
-            "Volume has COW Snapshots attached, skipping destroy, will be destoyed when all snapshots are removed",
-            volume_id=volume_id,
-            snapshots=total_snapshots,
-        )
-        return
-    elif total_snapshots > 0:
-        logger.warning(
-            "Volume has Snapshots(without COW) attached, will only remove volume data",
-            volume_id=volume_id,
-            snapshots=total_snapshots,
-        )
-    Path(img_file(volume_id)).unlink(missing_ok=True)
-    Path(lock_file(volume_id)).unlink(missing_ok=True)
-    if not len(temp_snapshots):
-        rmdir(snapshots_dir(volume_id, temporary=True))
-        if not len(snapshots):
-            rmdir(snapshots_dir(volume_id))
-    if not total_snapshots:
-        # Keep metadata if there are snapshots to be able to delete them later
-        Path(meta_file(volume_id)).unlink(missing_ok=True)
-        rmdir(Path(img_dir(volume_id)))
-
-
-def gc_if_needed(volume_id, dry_run=True):
-    meta = metadata_or(volume_id)
-
-    deleted_at = meta.get("deleted_at", None)
-    gc_at = meta.get("gc_at", None)
-    if deleted_at is None or gc_at is None:
-        return False
-
-    now = time.time()
-    if gc_at <= now:
-        destroy(volume_id, dry_run=dry_run)
-
-    return False
-
-
 @contextmanager
 def _owner_umask():
-    old_umask = umask(OWNER_UMASK)
+    old_umask = os.umask(OWNER_UMASK)
     try:
         yield
     finally:
-        umask(old_umask)  # Restore original umask
+        os.umask(old_umask)  # Restore original umask
 
 
 def update_metadata(volume_id: str, obj: dict) -> dict:
@@ -161,12 +100,6 @@ def update_permissions(volume_id: str) -> None:
 def patch_metadata(volume_id: str, obj: dict) -> dict:
     old_data = metadata_or(volume_id)
     new_data = {**old_data, **obj}
-    return update_metadata(volume_id, new_data)
-
-
-def migrate_metadata(volume_id, target_version):
-    old_data = metadata_or(volume_id)
-    new_data = migrate_to(old_data, target_version)
     return update_metadata(volume_id, new_data)
 
 
@@ -243,55 +176,6 @@ def detach_loops(file) -> None:
     devs = attached_loops(file)
     for dev in devs:
         run(f"losetup -d {dev}")
-
-
-def list_all_volumes():
-    metas = glob.glob(f"{DATA_DIR}/*/disk.meta")
-    return [basename(dirname(meta)) for meta in metas]
-
-
-def migrate_all_volume_schemas():
-    target_version = LATEST_SCHEMA_VERSION
-    for volume_id in list_all_volumes():
-        migrate_metadata(volume_id, target_version)
-
-
-def gc_all_volumes(dry_run=True):
-    for volume_id in list_all_volumes():
-        gc_if_needed(volume_id, dry_run=dry_run)
-
-
-def get_volumes_stats() -> dict[str, dict[str, int]]:
-    volumes_stats = {}
-    for volume_id in list_all_volumes():
-        try:
-            file = img_file(volume_id=volume_id)
-            loop_devs = attached_loops(file.as_posix())
-            if not (loop_devs and len(loop_devs)):
-                continue
-            mountpoint = device_to_mountpoint(loop_devs[0])
-            if not mountpoint:
-                continue
-            stats = path_stats(mountpoint)
-            volumes_stats[volume_id] = {
-                "used": stats["fs_usage"],
-                "total": stats["fs_size"],
-            }
-        except FileNotFoundError:
-            pass
-    return volumes_stats
-
-
-def get_capacity():
-    disk_free_size = path_stats(DATA_DIR, config.capacity_override)["fs_avail"]
-    capacity = disk_free_size
-    for volume_stat in get_volumes_stats().values():
-        capacity -= volume_stat["total"] - volume_stat["used"]
-    if isinstance(config.reserved_capacity, str):
-        capacity -= capacity * int(config.reserved_capacity[:-1]) / 100
-    else:
-        capacity -= config.reserved_capacity.to("B")
-    return max(capacity, 0)
 
 
 def be_absent(path):

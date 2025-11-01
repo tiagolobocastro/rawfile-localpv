@@ -608,7 +608,7 @@ def _(source_writer_pod, source_pvc):
         )
     else:
         try:
-            logger.info(f"Deleting snapshot writer POD: {pod_name}")
+            logger.info(f"Deleting writer POD: {pod_name}")
             client.CoreV1Api().delete_namespaced_pod(pod_name, namespace)
         except ApiException as e:
             if e.status != 404:

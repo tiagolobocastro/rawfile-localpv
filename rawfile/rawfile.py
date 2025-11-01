@@ -12,12 +12,13 @@ from csi import csi_pb2_grpc
 from internal import internal_pb2_grpc
 from metrics import expose_metrics
 from utils import task_manager
-from utils.rawfile import gc_all_volumes, is_cow_supported, migrate_all_volume_schemas
+from utils.rawfile import is_cow_supported
 from utils.logs import init as init_logging, logger
 from internal_svc import InternalServicer, SignatureInterceptor
 import consts
 from analytics.ga4 import run_ping, shutdown_event_worker, run_event_worker
 from orchestrator.k8s import node_ip_mapping
+from utils.volume_manager import manager as volume_manager
 import os
 
 
@@ -31,7 +32,7 @@ def node_driver_preflight_checks():
     if not os.access(data_dir, os.W_OK | os.R_OK | os.X_OK):
         raise RuntimeError(f"{data_dir} is not accessible")
     data_dir.chmod(consts.D_PERMS)
-    migrate_all_volume_schemas()
+    volume_manager.migrate_all_volume_schemas()
     consts.COW_SUPPORTED = is_cow_supported(data_dir)
 
 
@@ -58,7 +59,6 @@ def csi_driver(driver_config: CSIDriverCmd):
     csi_pb2_grpc.add_IdentityServicer_to_server(
         bd2fs.Bd2FsIdentityServicer(
             rawfile_servicer.RawFileIdentityServicer(),
-            task_manager=_task_manager,
         ),
         server,
     )
@@ -89,7 +89,7 @@ def csi_driver(driver_config: CSIDriverCmd):
     # and Snapshotting methods are only available in Controller Service right now
     csi_pb2_grpc.add_ControllerServicer_to_server(
         bd2fs.Bd2FsControllerServicer(
-            rawfile_servicer.RawFileControllerServicer(),
+            rawfile_servicer.RawFileControllerServicer(task_manager=_task_manager),
             task_manager=_task_manager,
         ),
         server,
@@ -150,6 +150,6 @@ if __name__ == "__main__":
 
     init_logging(_format=config.log_format, _level=config.log_level)
     if config.gc:
-        gc_all_volumes(config.gc.dry_run)
+        volume_manager.gc_all_volumes(config.gc.dry_run)
     elif config.csi_driver:
         csi_driver(config.csi_driver)

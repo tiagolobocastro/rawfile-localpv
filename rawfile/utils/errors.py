@@ -55,3 +55,38 @@ class FsFreezeNotSupportedOnBlockVolumes(NotImplementedError):
     def __init__(self):
         self.message = "FsFreeze is not supported on block volumes"
         super().__init__(self.message)
+
+
+class SourceTypeRequired(ValueError):
+    """
+    Exception raised when source id for create volume is provided but source type is not provided
+    """
+
+    def __init__(self, source_id: str):
+        self.source_id = source_id
+        self.message = f"No Source Type has been provided for {self.source_id}"
+        super().__init__(self.message)
+
+
+class VolumeInUseError(Exception):
+    """
+    Exception raised when Volume is attached while doing some operations (e.g. delete)
+    """
+
+    def __init__(self, volume_id: str):
+        self.volume_id = volume_id
+        self.message = f"Volume {volume_id} is attached"
+        super().__init__(self.message)
+
+
+class VolumeSourceIsNotReady(Exception):
+    """
+    Exception raised when Volume is attached while doing some operations (e.g. delete)
+    """
+
+    def __init__(self, volume_id, source_volume_id, snapshot_name):
+        self.volume_id = volume_id
+        self.source_volume_id = source_volume_id
+        self.snapshot_name = snapshot_name
+        self.message = f"VolumeSource {self.source_volume_id}/{self.snapshot_name} is not ready for destination {self.volume_id}"
+        super().__init__(self.message)
