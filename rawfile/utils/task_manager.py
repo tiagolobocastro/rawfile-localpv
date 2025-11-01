@@ -4,6 +4,7 @@ from typing import Callable, TypedDict
 import time
 import consts
 from utils.snapshot_manager import manager as snapshot_manager
+from utils.volume_manager import manager as volume_manager
 from pathlib import Path
 import json
 import hashlib
@@ -19,6 +20,7 @@ class TaskManagerShuttingDown(Exception):
 
 class TaskName(StrEnum):
     CREATE_SNAPSHOT = "CreateSnapshot"
+    CREATE_VOLUME = "CreateVolume"
 
 
 class TaskState(StrEnum):
@@ -30,6 +32,7 @@ class TaskState(StrEnum):
 
 task_mapping: dict[TaskName, Callable] = {
     TaskName.CREATE_SNAPSHOT: snapshot_manager.create_snapshot,
+    TaskName.CREATE_VOLUME: volume_manager.create_volume,
 }
 
 
@@ -65,9 +68,7 @@ class TaskManager:
         self._executor.submit(self.retry_worker)
 
     def retry_worker(self):
-        while True:
-            if self._shutting_down:
-                return
+        while not self._shutting_down:
             self.retry_all()
             for task_id, _ in self.get_tasks(retriable=False).items():
                 self.remove_task(task_id)
@@ -163,8 +164,9 @@ class TaskManager:
         if self._shutting_down:
             raise TaskManagerShuttingDown()
         task_id = self.hash_task_info(task, *args, **kwargs)
-        retry_count = (self.get_task(task_id) or {}).get("retry_count", -1)
-        if retry_count >= self._max_retry:
+        current = self.get_task(task_id) or {}
+        retry_count = current.get("retry_count", -1)
+        if current.get("state", None):
             return task_id
         info: TaskInfo = {
             "kwargs": kwargs,

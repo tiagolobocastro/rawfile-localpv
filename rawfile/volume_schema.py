@@ -1,7 +1,7 @@
 import sys
 from typing import Final
 
-LATEST_SCHEMA_VERSION: Final[int] = 4
+LATEST_SCHEMA_VERSION: Final[int] = 5
 
 
 def migrate_0_to_1(data: dict) -> dict:
@@ -27,6 +27,12 @@ def migrate_2_to_3(data: dict) -> dict:
 def migrate_3_to_4(data: dict) -> dict:
     data["schema_version"] = 4
     data["thin_provision"] = True
+    return data
+
+
+def migrate_4_to_5(data: dict) -> dict:
+    data["schema_version"] = 5
+    data["ready"] = True
     return data
 
 

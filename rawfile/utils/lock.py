@@ -7,15 +7,22 @@ from utils.rawfile import lock_file
 
 
 class VolLock:
-    def __init__(self, volume_id):
+    def __init__(self, volume_id, clear_on_release: bool = True, wait: bool = False):
         self.path = lock_file(volume_id)
         self.path.touch(exist_ok=True)
         self.file = open(self.path, "a")
+        self.clear_on_release = clear_on_release
+        self.wait = wait
 
     def __enter__(self):
-        # grabs the lock or fails right away
-        fcntl.flock(self.file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return self
+        while True:
+            try:
+                fcntl.flock(self.file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return self
+            except BlockingIOError as e:
+                if self.wait:
+                    continue
+                raise e
 
     def release(self):
         if hasattr(self, "file"):
@@ -24,3 +31,5 @@ class VolLock:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.release()
+        if self.clear_on_release:
+            self.path.unlink(missing_ok=True)

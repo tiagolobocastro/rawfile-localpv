@@ -2,10 +2,12 @@ from datetime import datetime, timedelta
 import functools
 import sys
 import json
-from loguru import logger
+from loguru import logger as _logger
 from loguru._defaults import LOGURU_FORMAT
 from enum import StrEnum
 from google.protobuf.json_format import MessageToDict
+
+logger = _logger
 
 
 def fmt_k8s_exception(e: Exception):

@@ -1,25 +1,23 @@
 from pathlib import Path
-from subprocess import CalledProcessError
+import time
 
-import consts
 import grpc
 from config import config
 from internal_svc import SIGNATURE_METADATA
+from utils.errors import VolumeInUseError
 import utils.rawfile
 from consts import (
     FORMAT_OPTIONS_KEY,
     PROVISIONER_NAME,
     PROVISIONER_VERSION,
-    RESOURCE_EXHAUSTED_EXIT_CODE,
-    VOLUME_IN_USE_EXIT_CODE,
     CSI_K8S_PVC_NAME_KEY,
 )
 from internal import internal_pb2, internal_pb2_grpc
 from csi import csi_pb2, csi_pb2_grpc
-from utils.rawfile import be_absent, be_symlink, metadata
+from utils.rawfile import be_absent, be_symlink, metadata, metadata_or
 from google.protobuf.wrappers_pb2 import BoolValue
 from orchestrator.k8s import node_ip_mapping, volume_to_node
-from utils.remote import get_capacity, init_rawfile, scrub
+from utils.remote import get_capacity
 from utils.logs import log_grpc_request
 from utils.commands import run
 from utils.rawfile import (
@@ -28,9 +26,11 @@ from utils.rawfile import (
     detach_loops,
 )
 from utils.devices import mountpoint_to_dev, device_stats
+from utils.task_manager import TaskManager, TaskName
 from utils.units import normalize_parameters, str_to_bool
 from analytics.ga4 import send_event, Usage
-from utils.snapshot_manager import manager as snapshot_manager
+from utils.volume_manager import VolumeSource, manager as volume_manager
+import utils.storage_pool
 
 NODE_NAME_TOPOLOGY_KEY = "hostname"
 
@@ -161,6 +161,10 @@ class RawFileNodeServicer(csi_pb2_grpc.NodeServicer):
 
 
 class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
+    def __init__(self, task_manager: TaskManager) -> None:
+        super().__init__()
+        self._task_manager = task_manager
+
     @log_grpc_request
     def ControllerGetCapabilities(self, request, context):
         Cap = csi_pb2.ControllerServiceCapability
@@ -177,26 +181,7 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def CreateVolume(self, request: csi_pb2.CreateVolumeRequest, context):
-        # TODO: volume_capabilities
-
-        if len(request.volume_capabilities) != 1:
-            context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT, "Exactly one cap is supported"
-            )
-
-        volume_capability = request.volume_capabilities[0]
-
-        AccessModeEnum = csi_pb2.VolumeCapability.AccessMode.Mode
-        if volume_capability.access_mode.mode not in [
-            AccessModeEnum.SINGLE_NODE_WRITER
-        ]:
-            context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                f"Unsupported access mode: {AccessModeEnum.Name(volume_capability.access_mode.mode)}",
-            )
-
-        MIN_SIZE = 16 * 1024 * 1024  # 16MiB: can't format xfs with smaller volumes
-        size = max(MIN_SIZE, request.capacity_range.required_bytes)
+        size = request.capacity_range.required_bytes
         params = normalize_parameters(request.parameters)
         thin_provision = str_to_bool(params.get("thinprovision", "no"))
         format_options = params.get("formatoptions", "").strip()
@@ -205,42 +190,9 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
         if copy_on_write_param is not None:
             copy_on_write = str_to_bool(copy_on_write_param)
         freezefs = str_to_bool(params.get("freezefs", "no"))
-
-        snapshot_id = None
-        remove_source_snapshot = False
-        if request.volume_content_source:
-            if all(
-                (
-                    request.volume_content_source.snapshot,
-                    request.volume_content_source.snapshot.snapshot_id,
-                )
-            ):
-                snapshot_id = request.volume_content_source.snapshot.snapshot_id
-            elif all(
-                (
-                    request.volume_content_source.volume,
-                    request.volume_content_source.volume.volume_id,
-                )
-            ):
-                remove_source_snapshot = True
-                source_meta = metadata(request.volume_content_source.volume.volume_id)
-                current_snapshot = snapshot_manager.list_snapshots(
-                    volume_id=request.volume_content_source.volume.volume_id,
-                    snapshot_name=f"{request.volume_content_source.volume.volume_id}-clone-source",
-                    temporary=True,
-                )
-                if current_snapshot.data and current_snapshot.data[0].ready:
-                    snapshot_id = current_snapshot.data[0].snapshot_id
-                else:
-                    snapshot_id = snapshot_manager.create_snapshot(
-                        volume_id=request.volume_content_source.volume.volume_id,
-                        name=f"{request.name}-clone-source",
-                        temporary=True,
-                        copy_on_write=source_meta.get("copy_on_write", None)
-                        if source_meta.get("copy_on_write", None) is not None
-                        else (consts.COW_SUPPORTED or False),
-                        freeze_fs=source_meta.get("freezefs", False),
-                    ).snapshot_id
+        source_type = None
+        source_id = None
+        node_name = None
         try:
             node_name = request.accessibility_requirements.preferred[0].segments[
                 NODE_NAME_TOPOLOGY_KEY
@@ -254,29 +206,54 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
             context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT, "Topology key not found... why?"
             )
-        try:
-            init_rawfile(
-                volume_id=request.name,
-                size=size,
-                thin_provision=thin_provision,
-                freezefs=freezefs,
-                copy_on_write=copy_on_write,
-                snapshot_id=snapshot_id,
-                temporary_snapshot=remove_source_snapshot,
+        required_space = size
+        if request.volume_content_source:
+            if all(
+                (
+                    request.volume_content_source.snapshot,
+                    request.volume_content_source.snapshot.snapshot_id,
+                )
+            ):
+                source_type = VolumeSource.snapshot
+                source_id = request.volume_content_source.snapshot.snapshot_id
+            elif all(
+                (
+                    request.volume_content_source.volume,
+                    request.volume_content_source.volume.volume_id,
+                )
+            ):
+                source_type = VolumeSource.volume
+                source_id = request.volume_content_source.volume.volume_id
+                required_space = required_space * 3
+        if utils.storage_pool.get_capacity() < required_space:
+            context.abort(
+                grpc.StatusCode.RESOURCE_EXHAUSTED,
+                "Insufficient disk space (Cloning a volume requires at least 3× the volume size).",
             )
-        except CalledProcessError as exc:
-            if exc.returncode == RESOURCE_EXHAUSTED_EXIT_CODE:
-                context.abort(
-                    grpc.StatusCode.RESOURCE_EXHAUSTED, "Not enough disk space"
-                )
-            else:
-                raise exc
-        finally:
-            if remove_source_snapshot and snapshot_id:
-                vol_id, snap_name = snapshot_id.rsplit("/", 1)
-                snapshot_manager.delete_snapshot(
-                    volume_id=vol_id, name=snap_name, temporary=remove_source_snapshot
-                )
+        is_ready = False
+        try:
+            is_ready = metadata(request.name).get("ready", False)
+        except FileNotFoundError:
+            self._task_manager.run_task(
+                TaskName.CREATE_VOLUME,
+                request.name,
+                size,
+                thin_provision,
+                freezefs,
+                copy_on_write,
+                source_type,
+                source_id,
+            )
+        start_time = time.time()
+        while time.time() - start_time < 30:
+            is_ready = metadata_or(request.name).get("ready", False)
+            if is_ready:
+                break
+            time.sleep(0.5)
+
+        if not is_ready:
+            context.abort(grpc.StatusCode.DEADLINE_EXCEEDED, "Volume Still Creating...")
+            return
 
         def volume_provision(usage: Usage):
             pvc_name = params.get(CSI_K8S_PVC_NAME_KEY, "")
@@ -297,22 +274,18 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
         )
 
     @log_grpc_request
-    def DeleteVolume(self, request, context):
-        size = 0
+    def DeleteVolume(self, request: csi_pb2.DeleteVolumeRequest, context):
         try:
-            size = scrub(volume_id=request.volume_id)
-        except CalledProcessError as exc:
-            if exc.returncode == VOLUME_IN_USE_EXIT_CODE:
-                context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Volume in use")
-            else:
-                raise exc
+            img_size = volume_manager.delete_volume(request.volume_id)
 
-        def volume_deprovision(usage: Usage):
-            if size > 0:
-                usage.volume_deprovision(request.volume_id, size)
+            def volume_deprovision(usage: Usage):
+                if img_size > 0:
+                    usage.volume_deprovision(request.volume_id, img_size)
 
-        send_event(volume_deprovision)
-        return csi_pb2.DeleteVolumeResponse()
+            send_event(volume_deprovision)
+            return csi_pb2.DeleteVolumeResponse()
+        except VolumeInUseError:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Volume in use")
 
     def GetCapacity(self, request, context):
         return csi_pb2.GetCapacityResponse(

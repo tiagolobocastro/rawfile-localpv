@@ -7,12 +7,12 @@ from utils.rawfile import (
     fallocate,
     img_file,
     snapshots_dir,
-    get_capacity,
     patch_metadata,
 )
 from utils.remote import is_attached
 from utils.lock import VolLock
 from typing import Final
+from utils.storage_pool import get_capacity
 import grpc
 
 SIGNATURE_METADATA: Final[str] = "x-signature"
