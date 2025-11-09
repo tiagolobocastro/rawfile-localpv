@@ -16,6 +16,12 @@ jobs:
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs-only == 'false' }}
     uses: ./.github/workflows/helm-chart.yml
+  trivy:
+    needs: changes
+    permissions:
+      contents: write
+    if: ${{ needs.changes.outputs.docs-only == 'false' }}
+    uses: ./.github/workflows/trivy.yml
   k8s-ci:
     permissions:
       checks: write
