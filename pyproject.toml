@@ -16,8 +16,8 @@ prometheus-client = "^0.23.1"
 loguru = "^0.7.3"
 cffi = "^2.0.0"
 kubernetes = "^34.1.0"
-pydantic = "^2.12.3"
-pydantic-settings = "^2.11.0"
+pydantic = "^2.12.4"
+pydantic-settings = "^2.12.0"
 requests = "^2.32.5"
 dnspython = "^2.8.0"
 tldextract = "^5.3.0"
@@ -27,13 +27,13 @@ humanize = "^4.14.0"
 rawfile = "rawfile.rawfile:cli"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.4.2"
+pytest = "^9.0.0"
 pytest-bdd = "^8.1.0"
 retrying = "^1.4.2"
 kubernetes = "^34.1.0"
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "^4.3.0"
+pre-commit = "^4.4.0"
 
 [build-system]
 requires = ["poetry-core"]
