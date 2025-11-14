@@ -7,8 +7,14 @@ CI_REGISTRY="$DREG"
 set -exuo pipefail
 source "$SCRIPT_DIR/common"
 
-command -v docker &>/dev/null || ( echo 'Docker is not installed. Aborting.'; exit 1 )
-docker buildx version &>/dev/null || ( echo 'Docker Buildx plugin is not installed. Aborting.'; exit 1 )
+command -v docker &>/dev/null || (
+  echo 'Docker is not installed. Aborting.'
+  exit 1
+)
+docker buildx version &>/dev/null || (
+  echo 'Docker Buildx plugin is not installed. Aborting.'
+  exit 1
+)
 
 export PUSH_OPTION=""
 export IMAGE_TAGS="${CI_TEST_IMAGE_TAG}"
@@ -22,7 +28,7 @@ else
     docker login -u "${DNAME}" -p "${DPASS}" "$CI_REGISTRY"
     export PUSH_OPTION="--push"
   fi
-  export IMAGE_TAGS="${COMMIT} ${BRANCH_SLUG} ${IMAGE_TAG}";
+  export IMAGE_TAGS="${COMMIT} ${BRANCH_SLUG} ${IMAGE_TAG}"
   export NO_CACHE_OPTIONS="--pull --no-cache"
 fi
 
