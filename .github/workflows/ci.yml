@@ -19,7 +19,9 @@ jobs:
   trivy:
     needs: changes
     permissions:
-      contents: write
+      security-events: write
+      actions: read
+      contents: read
     if: ${{ needs.changes.outputs.docs-only == 'false' }}
     uses: ./.github/workflows/trivy.yml
   k8s-ci:
