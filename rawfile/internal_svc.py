@@ -9,10 +9,10 @@ from utils.rawfile import (
     snapshots_dir,
     patch_metadata,
 )
-from utils.remote import is_attached
 from utils.lock import VolLock
 from typing import Final
 from utils.storage_pool import get_capacity
+from utils.volume_manager import manager as volume_manager
 import grpc
 
 SIGNATURE_METADATA: Final[str] = "x-signature"
@@ -54,13 +54,13 @@ class InternalServicer(internal_pb2_grpc.InternalServicer):
             size_inc = request.new_size - metadata(request.volume_id)["size"]
             if size_inc <= 0:
                 return internal_pb2.ExpandRawFileResponse(
-                    is_attached=is_attached(request.volume_id),
+                    is_attached=volume_manager.is_attached(request.volume_id),
                     status=internal_pb2.ExpandRawFileStatus.OK,
                 )
 
             if get_capacity() < size_inc:
                 return internal_pb2.ExpandRawFileResponse(
-                    is_attached=is_attached(request.volume_id),
+                    is_attached=volume_manager.is_attached(request.volume_id),
                     status=internal_pb2.ExpandRawFileStatus.RESOURCE_EXHAUSTED,
                 )
             if metadata(request.volume_id).get("thin_provision", False):
@@ -72,7 +72,7 @@ class InternalServicer(internal_pb2_grpc.InternalServicer):
                 {"size": request.new_size},
             )
             return internal_pb2.ExpandRawFileResponse(
-                is_attached=is_attached(request.volume_id),
+                is_attached=volume_manager.is_attached(request.volume_id),
                 status=internal_pb2.ExpandRawFileStatus.OK,
             )
 

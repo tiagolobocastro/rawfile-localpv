@@ -1,5 +1,6 @@
 from concurrent.futures import Executor, Future
 from enum import StrEnum
+import shutil
 from typing import Callable, TypedDict
 import time
 import consts
@@ -45,13 +46,15 @@ class TaskInfo(TypedDict):
 
 
 class TaskManager:
-    def __init__(self, executor: Executor, retry_interval=5, max_retry=5):
+    def __init__(
+        self, executor: Executor, tasks_store_path: Path, retry_interval=5, max_retry=5
+    ):
         self._executor = executor
         self._tasks: dict = {}
         self._shutting_down = False
         self._retry_interval = retry_interval
         self._max_retry = max_retry
-        self._tasks_store_path = Path(f"{consts.DATA_DIR}/tasks.json")
+        self._tasks_store_path = tasks_store_path
         self._tasks_store_path.parent.mkdir(exist_ok=True, parents=True)
         self._tasks_store_path.touch(exist_ok=True)
         self._lock = Lock()
@@ -94,7 +97,7 @@ class TaskManager:
         self, state: TaskState | None = None, retriable: bool | None = None
     ) -> dict[str, TaskInfo]:
         with self._lock:
-            with open(f"{consts.DATA_DIR}/tasks.json") as tasks_file:
+            with open(self._tasks_store_path) as tasks_file:
                 data = json.loads(tasks_file.read() or "{}")
                 if retriable is not None:
                     if retriable:
@@ -198,3 +201,9 @@ class TaskManager:
                 info["state"] = TaskState.FAILED
                 self.save_task(task_id, info)
         self._executor.shutdown(wait=False, cancel_futures=True)
+
+    def migrate_tasks_file_path(self):
+        src = Path(f"{consts.DATA_DIR}/tasks.json")
+        dst = self._tasks_store_path
+        if src.exists():
+            shutil.move(src, dst)

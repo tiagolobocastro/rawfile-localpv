@@ -5,13 +5,3 @@ import utils.storage_pool
 def get_capacity():
     cap = utils.storage_pool.get_capacity()
     return max(0, cap)
-
-
-def is_attached(volume_id):
-    img_dir = utils.rawfile.img_dir(volume_id)
-    if not img_dir.exists():
-        return False
-
-    img_file = utils.rawfile.img_file(volume_id)
-    loops = utils.rawfile.attached_loops(img_file.as_posix())
-    return len(loops) > 0

@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Any
 
 from utils.logs import logger
-
-from consts import D_PERMS, DATA_DIR, F_PERMS, OWNER_UMASK
+from config import config
+from consts import D_PERMS, F_PERMS, OWNER_UMASK
 import os
 from enum import Enum
 from utils.commands import run
@@ -17,20 +17,20 @@ class AccessType(Enum):
     block = 2
 
 
-def img_dir(volume_id):
-    return Path(f"{DATA_DIR}/{volume_id}")
+def meta_dir(volume_id):
+    return Path(f"{config.csi_driver.metadata_dir}/{volume_id}")
 
 
 def meta_file(volume_id):
-    return Path(f"{img_dir(volume_id)}/disk.meta")
+    return Path(f"{meta_dir(volume_id)}/disk.meta")
 
 
 def meta_file_tmp(volume_id):
-    return Path(f"{img_dir(volume_id)}/disk.meta.tmp")
+    return Path(f"{meta_dir(volume_id)}/disk.meta.tmp")
 
 
 def lock_file(volume_id):
-    return Path(f"{img_dir(volume_id)}/disk.lock")
+    return Path(f"{meta_dir(volume_id)}/disk.lock")
 
 
 def metadata(volume_id) -> dict[str, Any]:
@@ -49,9 +49,11 @@ def img_file(volume_id):
 
 
 def snapshots_dir(volume_id: str, temporary: bool = False):
+    from utils.volume_manager import manager as volume_manager
+
     if temporary:
-        return Path(f"{img_dir(volume_id)}/snapshots/temp")
-    return Path(f"{img_dir(volume_id)}/snapshots")
+        return Path(f"{volume_manager._get_volume_path(volume_id)}/snapshots/temp")
+    return Path(f"{volume_manager._get_volume_path(volume_id)}/snapshots")
 
 
 def img_size(volume_id) -> int:
@@ -89,11 +91,18 @@ def update_metadata(volume_id: str, obj: dict) -> dict:
 
 
 def update_permissions(volume_id: str) -> None:
-    _img_dir = img_dir(volume_id)
+    from utils.volume_manager import manager as volume_manager
+    from itertools import chain
+
+    _img_dir = volume_manager._get_volume_path(volume_id)
     if not _img_dir.exists():
         return
     _img_dir.chmod(D_PERMS)
-    for each in _img_dir.glob("**/*"):
+    ## set permissions recursively on all files and dirs under the volume path
+    # we go 3 levels deep to cover most cases (img file, snapshots, temp snapshots, etc.)
+    for each in chain(
+        _img_dir.glob("**/*"), _img_dir.glob("**/**/*"), _img_dir.glob("**/**/**/*")
+    ):
         each.chmod(F_PERMS)
 
 
