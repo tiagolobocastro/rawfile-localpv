@@ -5,13 +5,13 @@ import consts
 from utils.devices import device_to_mountpoint, path_stats
 from utils.errors import SourceTypeRequired, VolumeInUseError, VolumeSourceIsNotReady
 from utils.lock import VolLock
+from config import config
 from utils.rawfile import (
     attached_loops,
     fallocate,
-    img_dir,
     img_file,
     img_size,
-    meta_file,
+    meta_dir,
     metadata,
     metadata_or,
     patch_metadata,
@@ -25,6 +25,7 @@ from os.path import basename, dirname, getsize
 from utils.logs import logger
 from volume_schema import LATEST_SCHEMA_VERSION, migrate_to
 from glob import glob
+import shutil
 
 
 class VolumeSource(int, Enum):
@@ -39,7 +40,7 @@ class VolumeStats(TypedDict):
 
 class VolumeManager:
     def _get_volume_path(self, volume_id: str) -> Path:
-        return img_dir(volume_id)
+        return Path(f"{consts.DATA_DIR}/{volume_id}")
 
     def create_volume(
         self,
@@ -55,8 +56,9 @@ class VolumeManager:
             raise SourceTypeRequired(source_id)
         snapshot_name = None
         source_volume_id = None
-        img_data_dir = img_dir(volume_id)
+        img_data_dir = self._get_volume_path(volume_id)
         img_data_dir.mkdir(mode=consts.D_PERMS, exist_ok=True)
+        meta_dir(volume_id).mkdir(exist_ok=True, parents=True)
         patch_metadata(
             volume_id, {"ready": False, "schema_version": LATEST_SCHEMA_VERSION}
         )
@@ -180,8 +182,10 @@ class VolumeManager:
                 rmdir(snapshots_dir(volume_id))
         if not total_snapshots:
             # Keep metadata if there are snapshots to be able to delete them later
-            Path(meta_file(volume_id)).unlink(missing_ok=True)
-            rmdir(Path(img_dir(volume_id)))
+            for file in meta_dir(volume_id).glob("*"):
+                file.unlink(missing_ok=True)
+            rmdir(meta_dir(volume_id))
+            rmdir(self._get_volume_path(volume_id))
 
     def gc_if_needed(self, volume_id, dry_run=True):
         with VolLock(volume_id):
@@ -197,7 +201,7 @@ class VolumeManager:
         return False
 
     def delete_volume(self, volume_id):
-        img_data_dir = img_dir(volume_id)
+        img_data_dir = self._get_volume_path(volume_id)
         if not img_data_dir.exists():
             return 0
         vol_img_file = img_file(volume_id)
@@ -215,7 +219,7 @@ class VolumeManager:
         return vol_img_size
 
     def list_all_volumes(self):
-        metas = glob(f"{consts.DATA_DIR}/*/disk.meta")
+        metas = glob(f"{config.csi_driver.metadata_dir}/*/disk.meta")
         return [basename(dirname(meta)) for meta in metas]
 
     def gc_all_volumes(self, dry_run=True):
@@ -254,10 +258,33 @@ class VolumeManager:
         new_data = migrate_to(old_data, target_version)
         return update_metadata(volume_id, new_data)
 
+    def migrate_metadata_dir(self):
+        for old_meta in glob(f"{consts.DATA_DIR}/**/disk.meta"):
+            volume_id = basename(dirname(old_meta))
+            for f in (
+                "disk.meta",
+                "disk.meta.tmp",
+                "disk.lock",
+            ):
+                src = Path(f"{consts.DATA_DIR}/{volume_id}/{f}")
+                if src.exists():
+                    dst = meta_dir(volume_id) / f
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(src, dst)
+
     def migrate_all_volume_schemas(self):
         target_version = LATEST_SCHEMA_VERSION
         for volume_id in self.list_all_volumes():
             self.migrate_metadata(volume_id, target_version)
+
+    def is_attached(self, volume_id):
+        vol_img_dir = self._get_volume_path(volume_id)
+        if not vol_img_dir.exists():
+            return False
+
+        vol_img_file = img_file(volume_id)
+        loops = attached_loops(vol_img_file.as_posix())
+        return len(loops) > 0
 
 
 manager = VolumeManager()

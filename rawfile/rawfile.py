@@ -22,17 +22,32 @@ from utils.volume_manager import manager as volume_manager
 import os
 
 
-def node_driver_preflight_checks():
+def __create_and_check_directory(dir: Path):
+    if not dir.exists():
+        logger.info("Creating directory", path=str(dir))
+        dir.mkdir(parents=True, exist_ok=True)
+    if not dir.is_dir():
+        raise RuntimeError(f"{dir} is not a directory")
+    if not os.access(dir, os.W_OK | os.R_OK | os.X_OK):
+        raise RuntimeError(f"{dir} is not accessible")
+    dir.chmod(consts.D_PERMS)
+
+
+def node_driver_preflight_checks(task_manager: task_manager.TaskManager):
+    if not config.csi_driver:
+        raise RuntimeError("CSI Driver configuration is missing")
+    if not config.csi_driver.metadata_dir:
+        raise RuntimeError("Metadata directory is not set for node plugin")
     data_dir = Path(consts.DATA_DIR)
-    if not data_dir.exists():
-        logger.info("Creating data directory", path=str(data_dir))
-        data_dir.mkdir(parents=True, exist_ok=True)
-    if not data_dir.is_dir():
-        raise RuntimeError(f"{data_dir} is not a directory")
-    if not os.access(data_dir, os.W_OK | os.R_OK | os.X_OK):
-        raise RuntimeError(f"{data_dir} is not accessible")
-    data_dir.chmod(consts.D_PERMS)
+    dirs = (
+        config.csi_driver.metadata_dir,
+        data_dir,
+    )
+    for dir in dirs:
+        __create_and_check_directory(dir)
+    volume_manager.migrate_metadata_dir()
     volume_manager.migrate_all_volume_schemas()
+    task_manager.migrate_tasks_file_path()
     consts.COW_SUPPORTED = is_cow_supported(data_dir)
 
 
@@ -54,7 +69,10 @@ def csi_driver(driver_config: CSIDriverCmd):
         futures.ThreadPoolExecutor(max_workers=int(driver_config.grpc_workers))
     )
     bg_task_executor = ThreadPoolExecutor(max_workers=5)
-    _task_manager = task_manager.TaskManager(bg_task_executor)
+    _task_manager = task_manager.TaskManager(
+        bg_task_executor,
+        tasks_store_path=Path(f"{driver_config.metadata_dir}/tasks.json"),
+    )
     internal_server = None
     csi_pb2_grpc.add_IdentityServicer_to_server(
         bd2fs.Bd2FsIdentityServicer(
@@ -63,7 +81,7 @@ def csi_driver(driver_config: CSIDriverCmd):
         server,
     )
     if driver_config.plugin_type == "node":
-        node_driver_preflight_checks()
+        node_driver_preflight_checks(task_manager=_task_manager)
         csi_pb2_grpc.add_NodeServicer_to_server(
             bd2fs.Bd2FsNodeServicer(
                 rawfile_servicer.RawFileNodeServicer(node_name=driver_config.nodeid),

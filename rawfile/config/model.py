@@ -12,6 +12,7 @@ from pydantic import (
     AnyUrl,
     BaseModel,
     ByteSize,
+    DirectoryPath,
     StringConstraints,
     Field,
     model_validator,
@@ -34,6 +35,10 @@ class CSIDriverCmd(BaseModel):
     )
     internal_ip: IPvAnyAddress | None = Field(
         description="Listen ip for gRPC server (used for internal communication only)",
+        default=None,
+    )
+    metadata_dir: DirectoryPath | None = Field(
+        description="Directory to store Metadata files, required and should point to an existing path when running node plugin",
         default=None,
     )
     internal_port: int | None = Field(
@@ -69,13 +74,16 @@ class CSIDriverCmd(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_internal_endpoint(
+    def validate_node_plugin(
         self,
     ):
-        if self.plugin_type == "node" and not self.internal_ip:
-            raise ValueError(
-                "Internal Communication IP/PORT is required on node plugin"
-            )
+        if self.plugin_type == "node":
+            if not self.internal_ip:
+                raise ValueError(
+                    "Internal Communication IP/PORT is required on node plugin"
+                )
+            if not self.metadata_dir:
+                raise ValueError("Metadata Dir is required when running node plugin")
         return self
 
 
@@ -122,15 +130,6 @@ class RawFileCmd(
     )
     namespace: str = Field(
         description="K8s Namespace of the driver",
-    )
-    node_datadir: str = Field(
-        description="""
-                    Data Directory path of the driver,
-                    where raw files, their matadata and their lock files are getting stored
-
-                    NOTE that this path is used only for task pods, For CSI driver itself `/data` is used
-                    meaning that this path has to be mounted to `/data` in the CSI driver pod
-                    """,
     )
     log_level: Annotated[
         Literal["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"],

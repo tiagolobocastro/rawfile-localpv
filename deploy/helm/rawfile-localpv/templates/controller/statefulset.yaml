@@ -32,8 +32,6 @@ spec:
               value: "{{ .Values.provisionerName }}"
             - name: CSI_DRIVER__ENDPOINT
               value: unix:///csi/csi.sock
-            - name: NODE_DATADIR
-              value: "{{ .Values.node.dataDirPath }}"
             - name: CSI_DRIVER__NODE_ID
               valueFrom:
                 fieldRef:
