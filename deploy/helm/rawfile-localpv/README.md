@@ -1,6 +1,6 @@
 # rawfile-localpv
 
-![Version: 0.11.0](https://img.shields.io/badge/Version-0.11.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.11.0](https://img.shields.io/badge/AppVersion-0.11.0-informational?style=flat-square)
+![Version: 0.12.0](https://img.shields.io/badge/Version-0.12.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.12.0](https://img.shields.io/badge/AppVersion-0.12.0-informational?style=flat-square)
 
 RawFile Driver Container Storage Interface
 
@@ -20,7 +20,7 @@ Kubernetes: `>= 1.21`
 
 ## Install and Upgrades
 
-Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tree/v0.11.0/docs/install-guide.md)
+Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tree/v0.12.0/docs/install-guide.md)
 
 ## Values
 
@@ -74,7 +74,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.internalGRPC.port | int | `4500` | Port Number used for internal communication gRPC server |
 | node.internalGRPC.workers | int | `10` | gRPC worker count used for internal communication |
 | node.kubeletPath | string | `"/var/lib/kubelet"` | Kubelet path (Set to `/var/lib/k0s/kubelet` for k0s) |
-| node.metadataDirPath | string | `"/var/local/openebs/rawfile/meta"` | Metadata dir path for rawfile volumes metadata and tasks store file |
+| node.metadataDirPath | string | `"/var/local/openebs/rawfile/{{ .Release.Name }}/meta"` | Metadata dir path for rawfile volumes metadata and tasks store file |
 | node.metrics.enabled | bool | `false` |  |
 | node.priorityClassName | string | `"system-node-critical"` | priorityClassName for node component since this part is critical for node `system-node-critical` is default |
 | node.resources | object | `{}` | Sets compute resources for node component |

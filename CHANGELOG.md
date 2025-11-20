@@ -22,7 +22,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Issues 🚫
 
 - ReadOnly attribute in PVC template not fully handled
-- Volume restore/clone not implemented
+
+## [v0.12.0] - 2025-11-20 ⚠️ Breaking Changes
+
+### Added ✨
+
+- Volumes Snapshots using the rawfile image itself
+  - If the underlying fs supports it, we use `reflinks` for `COW`
+  - Otherwise, a deep copy is performed and application is frozen with `fsfreeze`
+  - However, if `fsfreeze` is not enable in the storage class, then snapshots are not allowed for in used volumes
+  - `COW` can be manually disabled or forcefully enabled
+- Volume Clone on the same node
+  - Leveraging the same rawfile snapshots
+- Trivy container image scanning on push and PRs
+- Kubelet path configuration
+
+### Fixed 🐛
+
+- Incorrect response object when not using json
+- Missing service monitor interval
+
+### Changed ♻️
+
+- Use gRPC server for internal communication
+  - Replaces previous pod which was used for controller->node communication
+- Updated base image to debian trixie
+- Support separate data and metadata dir ⚠️
+
+### Removed 🗑️
+
+- Btrfs Snapshots support ⚠️
+  - Existing snapshots may still be deleted on this version
+
+### Internal 🔧
+
+- Add reflink support to CI `kind` environment
+- Updated various dependency packages
+- Dependabot groups changes in single PR
+- Snapshot copy manager
+
+### Known Issues 🚫
+
+- ReadOnly attribute in PVC template not fully handled
 
 ## [v0.11.0] - 2025-07-22 ⚠️ Breaking Changes
 

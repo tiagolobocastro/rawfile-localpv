@@ -130,7 +130,7 @@ node:
   dataDirPath: /var/csi/rawfile
 
   # -- Metadata dir path for rawfile volumes metadata and tasks store file
-  metadataDirPath: /var/local/openebs/rawfile/meta
+  metadataDirPath: /var/local/openebs/rawfile/{{ .Release.Name }}/meta
 
   # -- Kubelet path (Set to `/var/lib/k0s/kubelet` for k0s)
   kubeletPath: /var/lib/kubelet

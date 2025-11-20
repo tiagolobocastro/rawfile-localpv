@@ -26,6 +26,15 @@ Don't blind upgrade to a potentially breaking version as additional steps may be
 
 We try to do our best to follow [semantic versioning](https://semver.org/), but mistakes can happen. If you encounter any unexpected breaking change from our part, please do let us know!
 
+### Upgrading to v0.12.0
+
+This version introduces the following breaking changes:
+
+- Btrfs snapshots has been deprecated
+  New snapshots cannot be taken but we still allow deleting existing ones.
+- Separate Data and Metadata dir
+  The metadata defaults to $DATA/meta and the data is copied automatically by the node plugin
+
 ### Upgrading to v0.11.0
 
 This version introduces the following breaking changes:

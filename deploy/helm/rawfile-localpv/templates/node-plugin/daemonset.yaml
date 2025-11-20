@@ -37,7 +37,7 @@ spec:
             type: DirectoryOrCreate
         - name: metadata-dir
           hostPath:
-            path: {{ .Values.node.metadataDirPath }}
+            path: {{ include "rawfile-localpv.metadata-dir-path" . }}
             type: DirectoryOrCreate
         - name: device
           hostPath:
@@ -64,7 +64,7 @@ spec:
             - name: CSI_DRIVER__METRICS_PORT
               value: {{ .Values.metrics.port | toString | quote }}
             - name: CSI_DRIVER__METADATA_DIR
-              value: {{ .Values.node.metadataDirPath }}
+              value: {{ include "rawfile-localpv.metadata-dir-path" . }}
             - name: NAMESPACE
               value: {{ .Release.Namespace }}
             - name: LOG_LEVEL
@@ -125,7 +125,7 @@ spec:
             - name: data-dir
               mountPath: /data
             - name: metadata-dir
-              mountPath: {{ .Values.node.metadataDirPath }}
+              mountPath: {{ include "rawfile-localpv.metadata-dir-path" . }}
             - name: device
               mountPath: /dev
           resources:
