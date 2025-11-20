@@ -116,3 +116,7 @@ Some helpers to handle image global information
 {{- define "rawfile-localpv.node-kubelet-path" -}}
 {{- printf "%s/" (.Values.node.kubeletPath | trimSuffix "/") -}}
 {{- end }}
+
+{{- define "rawfile-localpv.metadata-dir-path" -}}
+{{- tpl .Values.node.metadataDirPath . }}
+{{- end }}
