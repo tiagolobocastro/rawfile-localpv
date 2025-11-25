@@ -19,6 +19,7 @@ import consts
 from analytics.ga4 import run_ping, shutdown_event_worker, run_event_worker
 from orchestrator.k8s import node_ip_mapping
 from utils.volume_manager import manager as volume_manager
+from setproctitle import setproctitle
 import os
 
 
@@ -52,6 +53,9 @@ def node_driver_preflight_checks(task_manager: task_manager.TaskManager):
 
 
 def csi_driver(driver_config: CSIDriverCmd):
+    setproctitle(
+        f"RawFile LocalPV CSI Driver {driver_config.plugin_type} Plugin {driver_config.nodeid}"
+    )
     if driver_config.enable_metrics:
         expose_metrics(driver_config.nodeid, driver_config.metrics_port)
 
