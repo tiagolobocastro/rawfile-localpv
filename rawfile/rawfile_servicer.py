@@ -4,7 +4,7 @@ import time
 import grpc
 from config import config
 from internal_svc import SIGNATURE_METADATA
-from utils.errors import VolumeInUseError
+from utils.errors import VolumeInUseError, VolumeNotReadyError
 import utils.rawfile
 from consts import (
     FORMAT_OPTIONS_KEY,
@@ -118,6 +118,8 @@ class RawFileNodeServicer(csi_pb2_grpc.NodeServicer):
 
     @log_grpc_request
     def NodeStageVolume(self, request, context):
+        if not metadata_or(volume_id=request.volume_id).get("ready", False):
+            raise VolumeNotReadyError(request.volume_id)
         img_file = utils.rawfile.img_file(request.volume_id)
         loop_file = attach_loop(img_file)
         staging_path = request.staging_target_path
