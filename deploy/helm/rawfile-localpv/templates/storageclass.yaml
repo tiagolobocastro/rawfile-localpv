@@ -8,7 +8,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-install
     "helm.sh/hook-weight": "-5"
-    {{- if $class.isDefault }}storageclass.kubernetes.io/is-default-class: "true"{{ end }}
+    {{ if $class.isDefault }}storageclass.kubernetes.io/is-default-class: "true"{{ end }}
 provisioner: {{ $vals.provisionerName }}
 reclaimPolicy: {{ $class.reclaimPolicy }}
 volumeBindingMode: {{ $class.volumeBindingMode }}
