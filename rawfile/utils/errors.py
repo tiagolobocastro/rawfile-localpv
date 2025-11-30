@@ -90,3 +90,14 @@ class VolumeSourceIsNotReady(Exception):
         self.snapshot_name = snapshot_name
         self.message = f"VolumeSource {self.source_volume_id}/{self.snapshot_name} is not ready for destination {self.volume_id}"
         super().__init__(self.message)
+
+
+class VolumeNotReadyError(Exception):
+    """
+    Exception raised when Volume is not ready
+    """
+
+    def __init__(self, volume_id):
+        self.volume_id = volume_id
+        self.message = f"Volume {self.volume_id} is not ready"
+        super().__init__(self.message)

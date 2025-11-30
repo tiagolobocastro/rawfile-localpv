@@ -20,12 +20,14 @@ from declarative import (
     unmount,
 )
 from utils import task_manager
+from utils.errors import VolumeNotReadyError
 from utils.rawfile import (
     attach_loop,
     be_absent,
     detach_loops,
     img_file,
     metadata,
+    metadata_or,
 )
 from google.protobuf.timestamp_pb2 import Timestamp
 from utils.logs import log_grpc_request
@@ -73,6 +75,8 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
     @log_grpc_request
     def NodePublishVolume(self, request, context):
         with VolLock(request.volume_id):
+            if not metadata_or(volume_id=request.volume_id).get("ready", False):
+                raise VolumeNotReadyError(request.volume_id)
             staging_dev = f"{request.staging_target_path}/device"
 
             path = Path(request.target_path)
@@ -102,6 +106,8 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
     @log_grpc_request
     def NodeStageVolume(self, request, context):
         with VolLock(request.volume_id):
+            if not metadata_or(volume_id=request.volume_id).get("ready", False):
+                raise VolumeNotReadyError(request.volume_id)
             bd_stage_request = NodeStageVolumeRequest()
             bd_stage_request.CopyFrom(request)
             block_path = f"{request.staging_target_path}/block"
