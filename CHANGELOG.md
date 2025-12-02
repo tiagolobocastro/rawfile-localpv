@@ -23,6 +23,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ReadOnly attribute in PVC template not fully handled
 
+## [v0.12.1] - 2025-12-01
+
+### Fixed 🐛
+
+- Fixed helm storage class `isDefault` templating
+
+### Changed ♻️
+
+- Validate volume readiness before mounting
+
+### Known Issues 🚫
+
+- ReadOnly attribute in PVC template not fully handled
+
 ## [v0.12.0] - 2025-11-20 ⚠️ Breaking Changes
 
 ### Added ✨
