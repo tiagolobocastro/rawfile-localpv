@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ReadOnly attribute in PVC template not fully handled
 
+## [v0.12.2] - 2025/12/08
+
+### Fixed 🐛
+
+- Support IPv6 in the internal rawfile server
+
+### Known Issues 🚫
+
+- ReadOnly attribute in PVC template not fully handled
+
 ## [v0.12.1] - 2025-12-01
 
 ### Fixed 🐛
