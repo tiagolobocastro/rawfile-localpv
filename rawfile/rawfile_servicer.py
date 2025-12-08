@@ -1,3 +1,4 @@
+import ipaddress
 from pathlib import Path
 import time
 
@@ -300,9 +301,14 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
         node_name = volume_to_node(volume_id)
         size = request.capacity_range.required_bytes
 
-        node_ip = node_ip_mapping.get_node_ip(node_name)
+        node_ip_str = node_ip_mapping.get_node_ip(node_name)
         metadata = [(SIGNATURE_METADATA, config.csi_driver.internal_signature)]
-        channel = grpc.insecure_channel(f"{node_ip}:{config.csi_driver.internal_port}")
+        node_ip = ipaddress.ip_address(node_ip_str)
+        if node_ip.version == 6:
+            node_ip_str = f"[{node_ip_str}]"
+        channel = grpc.insecure_channel(
+            f"{node_ip_str}:{config.csi_driver.internal_port}"
+        )
         stub = internal_pb2_grpc.InternalStub(channel)
         response = stub.ExpandRawFile(
             internal_pb2.ExpandRawFileRequest(volume_id=volume_id, new_size=size),

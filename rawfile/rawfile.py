@@ -20,6 +20,7 @@ from analytics.ga4 import run_ping, shutdown_event_worker, run_event_worker
 from orchestrator.k8s import node_ip_mapping
 from utils.volume_manager import manager as volume_manager
 from setproctitle import setproctitle
+import ipaddress
 import os
 
 
@@ -103,8 +104,12 @@ def csi_driver(driver_config: CSIDriverCmd):
         internal_pb2_grpc.add_InternalServicer_to_server(
             InternalServicer(), internal_server
         )
+        internal_ip_str = driver_config.internal_ip
+        internal_ip = ipaddress.ip_address(internal_ip_str)  # type: ignore
+        if internal_ip.version == 6:
+            internal_ip_str = f"[{internal_ip_str}]"
         internal_server.add_insecure_port(
-            f"{driver_config.internal_ip}:{driver_config.internal_port}"
+            f"{internal_ip_str}:{driver_config.internal_port}"
         )
 
     # NOTE: Controller methods are exposed on node plugin too because we are using distributed-snapshotting
