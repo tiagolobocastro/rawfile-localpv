@@ -28,7 +28,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 |-----|------|---------|-------------|
 | auth.enabled | bool | `true` | Enables authentication for internal gRPC server |
 | auth.token | string | `""` | Sets authentication token for internal gRPC server, will generate one if nothing provided |
-| capacityOverride | string | `""` | Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`] |
+| capacityOverride | string | `""` | Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`] (Deprecated, use storagePools.capacityOverride instead) |
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |
 | controller.externalResizer.image.repository | string | `"sig-storage/csi-resizer"` | Image Repository for `csi-resizer` |
 | controller.externalResizer.image.tag | string | `"v1.13.2"` | Image tag for `csi-resizer` |
@@ -57,7 +57,8 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | metrics.port | int | `9100` | Sets metrics port |
 | metrics.serviceMonitor.enabled | bool | `false` | Enables prometheus service monitor |
 | metrics.serviceMonitor.interval | string | `"1m"` | Sets prometheus target interval |
-| node.dataDirPath | string | `"/var/csi/rawfile"` | Data dir path for provisioner to be used by provisioner |
+| node.dataDirPath | string | `"/var/csi/rawfile"` | Path to store data dir (Depricated, use storagePools.path instead) |
+| node.defaultFs | string | `"ext4"` | Default filesystem type for rawfile volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default]) |
 | node.driverRegistrar.image.registry | string | `""` | Image Registry for `csi-node-driver-registrar` |
 | node.driverRegistrar.image.repository | string | `"sig-storage/csi-node-driver-registrar"` | Image Repository for `csi-node-driver-registrar` |
 | node.driverRegistrar.image.tag | string | `"v2.13.0"` | Image Tag for `csi-node-driver-registrar` |
@@ -83,7 +84,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.snapshotController.image.tag | string | `"v8.2.1"` | Image Tag for `snapshot-controller` |
 | node.tolerations | string | `nil` | Tolerations for node component |
 | provisionerName | string | `"rawfile.csi.openebs.io"` | Name of the registered CSI Driver in the cluster |
-| reservedCapacity | string | `""` | Used to reserve capacity on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`] |
+| reservedCapacity | string | `""` | Used to reserve capacity on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`] (Deprecated, use storagePools.reservedCapacity instead) |
 | snapshotClasses[0].deletionPolicy | string | `"Delete"` | Sets deletion policy for snapshots created using this class (Delete or Retain) |
 | snapshotClasses[0].enabled | bool | `true` | Enable or disable SnapshotClass |
 | snapshotClasses[0].isDefault | bool | `false` | Make the snapshot class as default |
@@ -98,5 +99,6 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | storageClasses[0].mountOptions | list | `[]` | Sets mount options for filesystem volumes |
 | storageClasses[0].name | string | `"rawfile-localpv"` | Name of the StorageClass |
 | storageClasses[0].reclaimPolicy | string | `"Delete"` | Sets default reclaimPolicy for StorageClass volumes |
+| storageClasses[0].storagePool | string | `""` | Sets storage pool used for volumes |
 | storageClasses[0].thinProvision | string | `""` | Enables thin provisioning of volumes |
 | storageClasses[0].volumeBindingMode | string | `"WaitForFirstConsumer"` | Sets volumeBindingMode for StorageClass |

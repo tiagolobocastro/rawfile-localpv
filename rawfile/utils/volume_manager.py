@@ -39,13 +39,14 @@ class VolumeStats(TypedDict):
 
 
 class VolumeManager:
-    def _get_volume_path(self, volume_id: str) -> Path:
-        return Path(f"{consts.DATA_DIR}/{volume_id}")
+    def _get_volume_path(self, storage_pool: str, volume_id: str) -> Path:
+        return Path(f"{config.csi_driver.storage_pools[storage_pool].path}/{volume_id}")
 
     def create_volume(
         self,
         volume_id: str,
         size: int,
+        storage_pool: str,
         thin_provision: bool,
         freezefs: bool | None = None,
         copy_on_write: bool | None = None,
@@ -56,11 +57,17 @@ class VolumeManager:
             raise SourceTypeRequired(source_id)
         snapshot_name = None
         source_volume_id = None
-        img_data_dir = self._get_volume_path(volume_id)
+        img_data_dir = self._get_volume_path(storage_pool, volume_id)
         img_data_dir.mkdir(mode=consts.D_PERMS, exist_ok=True)
         meta_dir(volume_id).mkdir(exist_ok=True, parents=True)
         patch_metadata(
-            volume_id, {"ready": False, "schema_version": LATEST_SCHEMA_VERSION}
+            volume_id,
+            storage_pool,
+            {
+                "schema_version": LATEST_SCHEMA_VERSION,
+                "storage_pool": storage_pool,
+                "ready": False,
+            },
         )
         try:
             if source_type == VolumeSource.snapshot:
@@ -86,7 +93,11 @@ class VolumeManager:
                         temporary=True,
                         copy_on_write=source_meta.get("copy_on_write", None)
                         if source_meta.get("copy_on_write", None) is not None
-                        else (consts.COW_SUPPORTED or False),
+                        else (
+                            consts.COW_SUPPORT_MAP.get(
+                                source_meta["storage_pool"], False
+                            )
+                        ),
                         freeze_fs=source_meta.get("freezefs", False),
                     )
             with VolLock(volume_id):
@@ -98,6 +109,7 @@ class VolumeManager:
                 snapshots_dir.joinpath("temp").mkdir(exist_ok=True, parents=True)
                 patch_metadata(
                     volume_id,
+                    storage_pool,
                     {
                         "volume_id": volume_id,
                         "created_at": time.time(),
@@ -138,7 +150,7 @@ class VolumeManager:
                     truncate(img_file, size)
                 else:
                     fallocate(img_file, size)
-                patch_metadata(volume_id, {"ready": True})
+                patch_metadata(volume_id, storage_pool, {"ready": True})
         finally:
             if source_type == VolumeSource.volume and (
                 source_volume_id and snapshot_name
@@ -185,7 +197,11 @@ class VolumeManager:
             for file in meta_dir(volume_id).glob("*"):
                 file.unlink(missing_ok=True)
             rmdir(meta_dir(volume_id))
-            rmdir(self._get_volume_path(volume_id))
+            rmdir(
+                self._get_volume_path(
+                    meta.get("storage_pool", config.csi_driver.default_pool), volume_id
+                )
+            )
 
     def gc_if_needed(self, volume_id, dry_run=True):
         with VolLock(volume_id):
@@ -201,7 +217,10 @@ class VolumeManager:
         return False
 
     def delete_volume(self, volume_id):
-        img_data_dir = self._get_volume_path(volume_id)
+        meta = metadata_or(volume_id)
+        img_data_dir = self._get_volume_path(
+            meta.get("storage_pool", config.csi_driver.default_pool), volume_id
+        )
         if not img_data_dir.exists():
             return 0
         vol_img_file = img_file(volume_id)
@@ -213,7 +232,9 @@ class VolumeManager:
         gc_at = now
         with VolLock(volume_id):
             patch_metadata(
-                volume_id, {"deleted_at": deleted_at, "gc_at": gc_at, "ready": False}
+                volume_id,
+                meta["storage_pool"],
+                {"deleted_at": deleted_at, "gc_at": gc_at, "ready": False},
             )
         self.gc_if_needed(volume_id, dry_run=False)
         return vol_img_size
@@ -256,17 +277,28 @@ class VolumeManager:
     def migrate_metadata(self, volume_id, target_version):
         old_data = metadata_or(volume_id)
         new_data = migrate_to(old_data, target_version)
-        return update_metadata(volume_id, new_data)
+        return update_metadata(
+            volume_id,
+            old_data.get(
+                "storage_pool",
+                new_data.get("storage_pool", config.csi_driver.default_pool),
+            ),
+            new_data,
+        )
 
     def migrate_metadata_dir(self):
-        for old_meta in glob(f"{consts.DATA_DIR}/**/disk.meta"):
+        for old_meta in glob(
+            f"{config.csi_driver.storage_pools[config.csi_driver.default_pool].path}/**/disk.meta"
+        ):
             volume_id = basename(dirname(old_meta))
             for f in (
                 "disk.meta",
                 "disk.meta.tmp",
                 "disk.lock",
             ):
-                src = Path(f"{consts.DATA_DIR}/{volume_id}/{f}")
+                src = Path(
+                    f"{config.csi_driver.storage_pools[config.csi_driver.default_pool].path}/{volume_id}/{f}"
+                )
                 if src.exists():
                     dst = meta_dir(volume_id) / f
                     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -278,7 +310,8 @@ class VolumeManager:
             self.migrate_metadata(volume_id, target_version)
 
     def is_attached(self, volume_id):
-        vol_img_dir = self._get_volume_path(volume_id)
+        meta = metadata_or(volume_id)
+        vol_img_dir = self._get_volume_path(meta["storage_pool"], volume_id)
         if not vol_img_dir.exists():
             return False
 

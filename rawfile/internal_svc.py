@@ -57,18 +57,19 @@ class InternalServicer(internal_pb2_grpc.InternalServicer):
                     is_attached=volume_manager.is_attached(request.volume_id),
                     status=internal_pb2.ExpandRawFileStatus.OK,
                 )
-
-            if get_capacity() < size_inc:
+            meta = metadata(request.volume_id)
+            if get_capacity(meta["storage_pool"]) < request.new_size:
                 return internal_pb2.ExpandRawFileResponse(
                     is_attached=volume_manager.is_attached(request.volume_id),
                     status=internal_pb2.ExpandRawFileStatus.RESOURCE_EXHAUSTED,
                 )
-            if metadata(request.volume_id).get("thin_provision", False):
+            if meta.get("thin_provision", False):
                 truncate(img_file_path, request.new_size)
             else:
                 fallocate(img_file_path, request.new_size)
             patch_metadata(
                 request.volume_id,
+                meta["storage_pool"],
                 {"size": request.new_size},
             )
             return internal_pb2.ExpandRawFileResponse(

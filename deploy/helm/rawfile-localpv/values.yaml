@@ -6,9 +6,9 @@ logLevel: INFO
 # -- Format of the logs (json, pretty)
 logFormat: json
 
-# -- Used to reserve capacity on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`]
+# -- Used to reserve capacity on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`] (Deprecated, use storagePools.reservedCapacity instead)
 reservedCapacity: ""
-# -- Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`]
+# -- Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`] (Deprecated, use storagePools.capacityOverride instead)
 capacityOverride: ""
 
 auth:
@@ -126,8 +126,20 @@ node:
       # -- Image Tag for `snapshot-controller`
       tag: v8.2.1
 
-  # -- Data dir path for provisioner to be used by provisioner
+  # -- Default filesystem type for rawfile volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default])
+  defaultFs: ext4
+
+  # -- Path to store data dir (Depricated, use storagePools.path instead)
   dataDirPath: /var/csi/rawfile
+
+  # -- Default storage pool name
+  # defaultPool: default
+  # -- Storage pools configuration
+  # storagePools:
+  #   default:
+  #     path: /var/local/openebs/rawfile/default-pool/
+  #     reservedCapacity: ""
+  #     capacityOverride: ""
 
   # -- Metadata dir path for rawfile volumes metadata and tasks store file
   metadataDirPath: /var/local/openebs/rawfile/{{ .Release.Name }}/meta
@@ -201,6 +213,8 @@ storageClasses:
     copyOnWrite: ""
     # -- Enables FreezeFS on storage class can be used to enable snapshotting of inused volumes when CoW is disabled/not supported (False by default)
     freezeFs: ""
+    # -- Sets storage pool used for volumes
+    storagePool: ""
 
 snapshotClasses:
   - # -- Name of the SnapshotClass

@@ -3,6 +3,17 @@ from prometheus_client.exposition import start_http_server
 from prometheus_client.metrics_core import GaugeMetricFamily
 from utils.storage_pool import get_capacity
 from utils.volume_manager import manager as volume_manager
+from config import config
+
+
+def get_remaining_capacity():
+    val = 0
+    storage_pools = getattr(getattr(config, "csi_driver", None), "storage_pools", None)
+    if not storage_pools:
+        return 0
+    for pool in storage_pools.keys():
+        val += get_capacity(pool)
+    return val
 
 
 class VolumeStatsCollector(object):
@@ -28,7 +39,7 @@ class VolumeStatsCollector(object):
             labels=["node", "volume"],
             unit="bytes",
         )
-        remaining_capacity.add_metric([self.node], get_capacity())
+        remaining_capacity.add_metric([self.node], get_remaining_capacity())
         for volume_id, stats in volume_manager.get_all_volumes_stats().items():
             volume_used.add_metric([self.node, volume_id], stats["used"])
             volume_total.add_metric([self.node, volume_id], stats["total"])

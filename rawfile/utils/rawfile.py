@@ -51,9 +51,14 @@ def img_file(volume_id):
 def snapshots_dir(volume_id: str, temporary: bool = False):
     from utils.volume_manager import manager as volume_manager
 
+    meta = metadata(volume_id)
     if temporary:
-        return Path(f"{volume_manager._get_volume_path(volume_id)}/snapshots/temp")
-    return Path(f"{volume_manager._get_volume_path(volume_id)}/snapshots")
+        return Path(
+            f"{volume_manager._get_volume_path(meta.get('storage_pool', config.csi_driver.default_pool), volume_id)}/snapshots/temp"
+        )
+    return Path(
+        f"{volume_manager._get_volume_path(meta.get('storage_pool', config.csi_driver.default_pool), volume_id)}/snapshots"
+    )
 
 
 def img_size(volume_id) -> int:
@@ -69,8 +74,8 @@ def _owner_umask():
         os.umask(old_umask)  # Restore original umask
 
 
-def update_metadata(volume_id: str, obj: dict) -> dict:
-    update_permissions(volume_id)
+def update_metadata(volume_id: str, storage_pool: str, obj: dict) -> dict:
+    update_permissions(volume_id, storage_pool)
     with _owner_umask():
         meta_tmp = meta_file_tmp(volume_id)
         meta = meta_file(volume_id)
@@ -90,11 +95,11 @@ def update_metadata(volume_id: str, obj: dict) -> dict:
     return obj
 
 
-def update_permissions(volume_id: str) -> None:
+def update_permissions(volume_id: str, storage_pool: str) -> None:
     from utils.volume_manager import manager as volume_manager
     from itertools import chain
 
-    _img_dir = volume_manager._get_volume_path(volume_id)
+    _img_dir = volume_manager._get_volume_path(storage_pool, volume_id)
     if not _img_dir.exists():
         return
     _img_dir.chmod(D_PERMS)
@@ -106,10 +111,10 @@ def update_permissions(volume_id: str) -> None:
         each.chmod(F_PERMS)
 
 
-def patch_metadata(volume_id: str, obj: dict) -> dict:
+def patch_metadata(volume_id: str, storage_pool: str, obj: dict) -> dict:
     old_data = metadata_or(volume_id)
     new_data = {**old_data, **obj}
-    return update_metadata(volume_id, new_data)
+    return update_metadata(volume_id, storage_pool, new_data)
 
 
 def truncate(img_file, size):

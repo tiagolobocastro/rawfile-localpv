@@ -1,0 +1,23 @@
+logLevel: TRACE
+logFormat: pretty
+
+global:
+  analytics:
+    gaId: Ry1MUEQwM0NHRVZO
+    gaKey: aWJqNmIwbnhScUM1dGk0eHpVZ1Jvdw==
+
+metrics:
+  serviceMonitor:
+    enabled: false
+
+image:
+  pullPolicy: Never
+
+node:
+  defaultFs: ext4
+  defaultPool: default
+  storagePools:
+    default:
+      path: /var/local/openebs/rawfile/default-pool/
+      reservedCapacity: ""
+      capacityOverride: ""

@@ -12,12 +12,12 @@ from csi import csi_pb2_grpc
 from internal import internal_pb2_grpc
 from metrics import expose_metrics
 from utils import task_manager
-from utils.rawfile import is_cow_supported
 from utils.logs import init as init_logging, logger
 from internal_svc import InternalServicer, SignatureInterceptor
 import consts
 from analytics.ga4 import run_ping, shutdown_event_worker, run_event_worker
 from orchestrator.k8s import node_ip_mapping
+from utils.rawfile import is_cow_supported
 from utils.volume_manager import manager as volume_manager
 from setproctitle import setproctitle
 import ipaddress
@@ -40,17 +40,19 @@ def node_driver_preflight_checks(task_manager: task_manager.TaskManager):
         raise RuntimeError("CSI Driver configuration is missing")
     if not config.csi_driver.metadata_dir:
         raise RuntimeError("Metadata directory is not set for node plugin")
-    data_dir = Path(consts.DATA_DIR)
-    dirs = (
+    dirs = [
         config.csi_driver.metadata_dir,
-        data_dir,
-    )
+    ]
+    dirs.extend([pool.path for pool in config.csi_driver.storage_pools.values()])
     for dir in dirs:
         __create_and_check_directory(dir)
     volume_manager.migrate_metadata_dir()
     volume_manager.migrate_all_volume_schemas()
     task_manager.migrate_tasks_file_path()
-    consts.COW_SUPPORTED = is_cow_supported(data_dir)
+    consts.COW_SUPPORT_MAP = {
+        name: is_cow_supported(pool.path)
+        for name, pool in config.csi_driver.storage_pools.items()
+    }
 
 
 def csi_driver(driver_config: CSIDriverCmd):

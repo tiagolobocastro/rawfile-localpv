@@ -106,7 +106,8 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
     @log_grpc_request
     def NodeStageVolume(self, request, context):
         with VolLock(request.volume_id):
-            if not metadata_or(volume_id=request.volume_id).get("ready", False):
+            meta = metadata_or(volume_id=request.volume_id)
+            if not meta.get("ready", False):
                 raise VolumeNotReadyError(request.volume_id)
             bd_stage_request = NodeStageVolumeRequest()
             bd_stage_request.CopyFrom(request)
@@ -141,7 +142,8 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
                     format_options = format_options_str.split(" ")
                 default_fs = request.volume_capability.mount.fs_type
                 fs = get_from_device_or_fallback(
-                    bd_publish_request.target_path, (default_fs or config.default_fs)
+                    bd_publish_request.target_path,
+                    (default_fs or config.csi_driver.default_fs),
                 )
                 fs.mountpoint = f"{request.staging_target_path}/mount"
                 fs.format_and_mount(
@@ -300,7 +302,9 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
             copy_on_write = (
                 copy_on_write_param
                 if copy_on_write_param is not None
-                else consts.COW_SUPPORTED
+                else consts.COW_SUPPORT_MAP.get(
+                    volume_meta.get("storage_pool", None), False
+                )
             )
 
         def _get_current_snapshot():
