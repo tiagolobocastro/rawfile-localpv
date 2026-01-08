@@ -5,10 +5,7 @@ SCRIPT_DIR="$(dirname "$0")"
 set -exuo pipefail
 source "$SCRIPT_DIR/common"
 
-command -v trivy || (
-  echo 'Trivy is not installed. Aborting.'
-  exit 1
-)
+command -v trivy || die 'Trivy is not installed. Aborting.'
 export CI_TEST=true
 "$SCRIPT_DIR"/build.sh
 

@@ -31,10 +31,6 @@ spec:
           hostPath:
             path: {{ include "rawfile-localpv.node-kubelet-path" . }}
             type: DirectoryOrCreate
-        - name: data-dir
-          hostPath:
-            path: {{ .Values.node.dataDirPath }}
-            type: DirectoryOrCreate
         - name: metadata-dir
           hostPath:
             path: {{ include "rawfile-localpv.metadata-dir-path" . }}
@@ -43,6 +39,7 @@ spec:
           hostPath:
             path: /dev
             type: Directory
+        {{- include "rawfile-localpv.pool-volumes" . | nindent 8 }}
       containers:
         - name: csi-driver
           image: "{{ include "rawfile-localpv.node-image" . }}"
@@ -111,6 +108,43 @@ spec:
                   name: {{ include "rawfile-localpv.fullname" . }}-secrets
                   key: internal-signature
             {{- end }}
+            - name: CSI_DRIVER__DEFAULT_FS
+              value: {{ .Values.node.defaultFs }}
+            - name: CSI_DRIVER__DEFAULT_POOL
+            {{- if .Values.node.defaultPool }}
+              value: {{ .Values.node.defaultPool }}
+            {{- else if not .Values.node.storagePools }}
+              value: "data-dir"
+            {{- end }}
+            - name: CSI_DRIVER__STORAGE_POOLS
+              value: |
+                {
+                  {{- if not .Values.node.storagePools }}
+                  "data-dir": {
+                    "path": "{{ .Values.node.dataDirPath }}"
+                    {{- with .Values.reservedCapacity }}
+                    , "reserved_capacity": "{{ . | toString }}"
+                    {{- end }}
+                    {{- with .Values.capacityOverride }}
+                    , "capacity_override": "{{ . | toString }}"
+                    {{- end }}
+                    }
+                  {{- else }}
+                  {{- $keys := keys .Values.node.storagePools | sortAlpha }}
+                  {{- range $i, $name := $keys }}
+                  "{{ $name }}": {
+                    "path": "{{ tpl (index $.Values.node.storagePools $name).path . }}"
+                    {{- with (index $.Values.node.storagePools $name).reservedCapacity }}
+                    , "reserved_capacity": "{{ . | toString }}"
+                    {{- end }}
+                    {{- with (index $.Values.node.storagePools $name).capacityOverride }}
+                    , "capacity_override": "{{ . | toString }}"
+                    {{- end }}
+                  }{{ if lt (add1 $i) (len $keys) }},{{ end }}
+                  {{- end }}
+                  {{- end }}
+                }
+
           ports:
             - name: metrics
               containerPort: {{ .Values.metrics.port }}
@@ -122,12 +156,11 @@ spec:
             - name: mountpoint-dir
               mountPath: {{ include "rawfile-localpv.node-kubelet-path" . }}
               mountPropagation: "Bidirectional"
-            - name: data-dir
-              mountPath: /data
             - name: metadata-dir
               mountPath: {{ include "rawfile-localpv.metadata-dir-path" . }}
             - name: device
               mountPath: /dev
+            {{- include "rawfile-localpv.pool-volume-mounts" . | nindent 12 }}
           resources:
             {{- include "rawfile-localpv.controller-resources" . | nindent 12 }}
         - name: node-driver-registrar

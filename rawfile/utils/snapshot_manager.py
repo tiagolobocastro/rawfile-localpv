@@ -2,9 +2,8 @@ from os import fsync
 from pathlib import Path
 import time
 from dataclasses import dataclass
-import consts
 from utils.commands import run
-
+from config import config
 from utils.errors import FsFreezeNotSupportedOnBlockVolumes, SnapshotCreateVolumeInUse
 from utils.lock import VolLock
 from utils.rawfile import (
@@ -77,7 +76,11 @@ class SnapshotManager:
                 reflink_attached = list(set(meta.get("reflink_attached", [])))
                 if copy_on_write:
                     reflink_attached.append(name)
-                patch_metadata(volume_id, {"reflink_attached": reflink_attached})
+                patch_metadata(
+                    volume_id,
+                    meta.get("storage_pool", config.csi_driver.default_pool),
+                    {"reflink_attached": reflink_attached},
+                )
                 return Snapshot(
                     name=name,
                     volume_id=volume_id,
@@ -111,7 +114,11 @@ class SnapshotManager:
             reflink_attached = list(set(meta.get("reflink_attached", [])))
             if name in reflink_attached:
                 reflink_attached.remove(name)
-                patch_metadata(volume_id, {"reflink_attached": reflink_attached})
+                patch_metadata(
+                    volume_id,
+                    meta["storage_pool"],
+                    {"reflink_attached": reflink_attached},
+                )
 
     def restore_snapshot(
         self, volume_id: str, name: str, destination: Path, temporary: bool = False
@@ -139,10 +146,21 @@ class SnapshotManager:
     ) -> SnapshotList:
         """List available snapshots"""
         subdir = "snapshots/temp" if temporary else "snapshots"
-        pattern = f"{consts.DATA_DIR}/{volume_id if volume_id else '**'}/{subdir}/{snapshot_name if snapshot_name else '*'}.img"
-
+        patterns = []
+        if volume_id:
+            patterns = [
+                f"{config.csi_driver.storage_pools[metadata(volume_id)['storage_pool']].path}/{volume_id if volume_id else '**'}/{subdir}/{snapshot_name if snapshot_name else '*'}.img"
+            ]
+        else:
+            for pool in config.csi_driver.storage_pools.values():
+                patterns.append(
+                    f"{pool.path}/**/{subdir}/{snapshot_name if snapshot_name else '*'}.img"
+                )
         snapshots = []
-        snapshot_files = sorted(glob(pattern, recursive=True))
+        snapshot_files = []
+        for pattern in patterns:
+            snapshot_files.extend(sorted(glob(pattern, recursive=True)))
+
         count = 0
         idx = 0
         for idx, snap_filename in enumerate(snapshot_files):

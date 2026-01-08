@@ -1,7 +1,7 @@
 import sys
 from typing import Final
 
-LATEST_SCHEMA_VERSION: Final[int] = 5
+LATEST_SCHEMA_VERSION: Final[int] = 6
 
 
 def migrate_0_to_1(data: dict) -> dict:
@@ -33,6 +33,14 @@ def migrate_3_to_4(data: dict) -> dict:
 def migrate_4_to_5(data: dict) -> dict:
     data["schema_version"] = 5
     data["ready"] = True
+    return data
+
+
+def migrate_5_to_6(data: dict) -> dict:
+    from config import config
+
+    data["schema_version"] = 6
+    data["storage_pool"] = config.csi_driver.default_pool
     return data
 
 

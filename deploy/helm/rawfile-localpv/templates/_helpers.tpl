@@ -120,3 +120,31 @@ Some helpers to handle image global information
 {{- define "rawfile-localpv.metadata-dir-path" -}}
 {{- tpl .Values.node.metadataDirPath . }}
 {{- end }}
+
+{{- define "rawfile-localpv.pool-volumes" -}}
+{{- if not .Values.node.storagePools }}
+- name: data-dir
+  hostPath:
+    path: {{ tpl .Values.node.dataDirPath . }}
+    type: DirectoryOrCreate
+{{- else }}
+{{- range $name, $pool := .Values.node.storagePools }}
+- name: pool-{{ $name }}
+  hostPath:
+    path: {{ tpl $pool.path . }}
+    type: DirectoryOrCreate
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "rawfile-localpv.pool-volume-mounts" -}}
+{{- if not .Values.node.storagePools }}
+- name: data-dir
+  mountPath: {{ tpl .Values.node.dataDirPath . }}
+{{- else }}
+{{- range $name, $pool := .Values.node.storagePools }}
+- name: pool-{{ $name }}
+  mountPath: {{ tpl $pool.path . }}
+{{- end }}
+{{- end }}
+{{- end }}

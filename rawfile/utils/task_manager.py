@@ -3,7 +3,7 @@ from enum import StrEnum
 import shutil
 from typing import Callable, TypedDict
 import time
-import consts
+from config import config
 from utils.snapshot_manager import manager as snapshot_manager
 from utils.volume_manager import manager as volume_manager
 from pathlib import Path
@@ -203,7 +203,9 @@ class TaskManager:
         self._executor.shutdown(wait=False, cancel_futures=True)
 
     def migrate_tasks_file_path(self):
-        src = Path(f"{consts.DATA_DIR}/tasks.json")
+        src = Path(
+            f"{config.csi_driver.storage_pools[config.csi_driver.default_pool].path}/tasks.json"
+        )
         dst = self._tasks_store_path
         if src.exists():
             shutil.move(src, dst)

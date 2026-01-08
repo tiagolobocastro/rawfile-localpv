@@ -193,6 +193,12 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
         if copy_on_write_param is not None:
             copy_on_write = str_to_bool(copy_on_write_param)
         freezefs = str_to_bool(params.get("freezefs", "no"))
+        storage_pool = params.get("storagepool", config.csi_driver.default_pool)
+        if storage_pool not in config.csi_driver.storage_pools.keys():
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                f"Invalid storage pool '{storage_pool}'. Available pools: {list(config.csi_driver.storage_pools.keys())}",
+            )
         source_type = None
         source_id = None
         node_name = None
@@ -241,6 +247,7 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
                 TaskName.CREATE_VOLUME,
                 request.name,
                 size,
+                storage_pool,
                 thin_provision,
                 freezefs,
                 copy_on_write,

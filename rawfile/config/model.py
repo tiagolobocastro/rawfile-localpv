@@ -1,3 +1,4 @@
+import re
 import warnings
 from pydantic_settings import (
     BaseSettings,
@@ -15,13 +16,37 @@ from pydantic import (
     DirectoryPath,
     StringConstraints,
     Field,
+    field_validator,
     model_validator,
 )
 from pydantic.networks import IPvAnyAddress
-from typing import Annotated, Literal
+from typing import Annotated, Final, Literal
 import consts
 from utils.logs import LoggingFormats
 from datetime import timedelta
+import json
+
+NAME_REGEX: Final[re.Pattern] = re.compile(
+    r"^(?=.{1,253}$)(?!.*\.\.)([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)(\.([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?))*$"
+)
+
+
+class StoragePool(BaseModel):
+    path: DirectoryPath = Field(description="Path of the pool, Should be unique")
+    reserved_capacity: (
+        ByteSize
+        | Annotated[
+            str,
+            StringConstraints(strip_whitespace=True, pattern=r"^\d+%$"),
+        ]
+    ) = Field(
+        default=ByteSize(0),
+        description="Reserves capacity of storage pool",
+    )
+    capacity_override: ByteSize | None = Field(
+        default=None,
+        description="Overrides total capacity of storage pool",
+    )
 
 
 class CSIDriverCmd(BaseModel):
@@ -32,6 +57,18 @@ class CSIDriverCmd(BaseModel):
         ]
     ) = Field(
         description="Listen address for gRPC server",
+    )
+    default_fs: FileSystemName = Field(
+        default=FileSystemName.EXT4,
+        description="Default filesystem used when creating volumes and fsType is not specified in storage class parameters",
+    )
+    storage_pools: dict[str, StoragePool] | None = Field(
+        description="List of storage pools (Map of name to configuration), required when running node plugin",
+        default=None,
+    )
+    default_pool: str | None = Field(
+        description="Name of the default storage pool, used when no storage pool is defined in storage class",
+        default=None,
     )
     internal_ip: IPvAnyAddress | None = Field(
         description="Listen ip for gRPC server (used for internal communication only)",
@@ -73,6 +110,16 @@ class CSIDriverCmd(BaseModel):
         description="Type/Mode of the CSI plugin"
     )
 
+    @field_validator("storage_pools", mode="before")
+    @classmethod
+    def validate_storage_pools(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception as e:
+                raise ValueError(f"Invalid JSON for storage_pools: {e}")
+        return v
+
     @model_validator(mode="after")
     def validate_node_plugin(
         self,
@@ -84,6 +131,30 @@ class CSIDriverCmd(BaseModel):
                 )
             if not self.metadata_dir:
                 raise ValueError("Metadata Dir is required when running node plugin")
+            if not self.storage_pools or len(self.storage_pools) == 0:
+                raise ValueError(
+                    "Storage Pool list is required when running node plugin"
+                )
+
+            paths = []
+            for name, pool in self.storage_pools.items():
+                if len(name) > 63 or len(name) < 3:
+                    raise ValueError(
+                        "Name of the storage pool should be between 3 and 63 characters"
+                    )
+                if not NAME_REGEX.match(name):
+                    raise ValueError(
+                        "Name of the storage pool should be DNS compatible"
+                    )
+                if pool.path in paths:
+                    raise ValueError("Duplicate path in storage pool is not supported")
+                paths.append(pool.path)
+            if self.default_pool is None:
+                raise ValueError("default_pool is required when running node plugin")
+            if self.default_pool not in self.storage_pools:
+                raise ValueError(
+                    f"default_pool '{self.default_pool}' does not exist in storage_pools"
+                )
         return self
 
 
@@ -110,24 +181,6 @@ class RawFileCmd(
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return CliSettingsSource(settings_cls, cli_parse_args=True), env_settings
 
-    reserved_capacity: (
-        ByteSize
-        | Annotated[
-            str,
-            StringConstraints(strip_whitespace=True, pattern=r"^\d+%$"),
-        ]
-    ) = Field(
-        default=ByteSize(0),
-        description="Reserves capacity of data dir",
-    )
-    capacity_override: ByteSize | None = Field(
-        default=None,
-        description="Overrides total capacity of data dir",
-    )
-    default_fs: FileSystemName = Field(
-        default=FileSystemName.EXT4,
-        description="Default filesystem used where creating volumes and fsType is not specified in storage class parameters",
-    )
     namespace: str = Field(
         description="K8s Namespace of the driver",
     )
