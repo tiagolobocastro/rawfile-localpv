@@ -37,7 +37,7 @@ from rawfile_servicer import check_access_type, get_access_type
 from utils.rawfile import (
     AccessType,
 )
-from utils.devices import path_stats
+from utils.devices import statvfs
 from filesystem.base import UnknownFileSystemError
 from utils.lock import VolLock
 from utils.task_manager import TaskManager
@@ -180,7 +180,7 @@ class Bd2FsNodeServicer(csi_pb2_grpc.NodeServicer):
         volume_path = request.volume_path
         if Path(volume_path).is_block_device():
             return self.bds.NodeGetVolumeStats(request, context)
-        stats = path_stats(volume_path)
+        stats = statvfs(volume_path)
         return csi_pb2.NodeGetVolumeStatsResponse(
             usage=[
                 csi_pb2.VolumeUsage(

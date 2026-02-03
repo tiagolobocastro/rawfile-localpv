@@ -20,6 +20,7 @@ class VolumeStatsCollector(object):
     def __init__(self, node):
         self.node = node
 
+    # TODO (pgu, 09.02.2026): should these metrics be per node per pool?
     def collect(self):
         remaining_capacity = GaugeMetricFamily(
             "rawfile_remaining_capacity",
@@ -42,7 +43,7 @@ class VolumeStatsCollector(object):
         remaining_capacity.add_metric([self.node], get_remaining_capacity())
         for volume_id, stats in volume_manager.get_all_volumes_stats().items():
             volume_used.add_metric([self.node, volume_id], stats["used"])
-            volume_total.add_metric([self.node, volume_id], stats["total"])
+            volume_total.add_metric([self.node, volume_id], stats["logical_size"])
         return [remaining_capacity, volume_used, volume_total]
 
 

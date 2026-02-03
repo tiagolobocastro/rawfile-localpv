@@ -2,7 +2,7 @@ from enum import Enum
 import time
 from typing import TypedDict
 import consts
-from utils.devices import device_to_mountpoint, path_stats
+from utils.devices import device_to_mountpoint, statvfs, stat
 from utils.errors import SourceTypeRequired, VolumeInUseError, VolumeSourceIsNotReady
 from utils.lock import VolLock
 from config import config
@@ -34,8 +34,12 @@ class VolumeSource(int, Enum):
 
 
 class VolumeStats(TypedDict):
-    total: int
+    physical_size: int
+    logical_size: int
     used: int
+    pool: str
+    thin_provision: bool
+    thin: bool
 
 
 class VolumeManager:
@@ -119,6 +123,7 @@ class VolumeManager:
                         "thin_provision": thin_provision,
                         "freezefs": freezefs,
                         "copy_on_write": copy_on_write,
+                        "storage_pool": storage_pool,
                     },
                 )
                 img_file.touch()
@@ -251,6 +256,9 @@ class VolumeManager:
 
     def get_volume_stats(self, volume_id) -> VolumeStats | None:
         try:
+            meta = metadata_or(volume_id)
+            pool = meta.get("storage_pool", config.csi_driver.default_pool)
+            thin_provision = meta.get("thin_provision", False)
             file = img_file(volume_id=volume_id)
             loop_devs = attached_loops(file.as_posix())
             if not (loop_devs and len(loop_devs)):
@@ -258,11 +266,22 @@ class VolumeManager:
             mountpoint = device_to_mountpoint(loop_devs[0])
             if not mountpoint:
                 return None
-            stats = path_stats(mountpoint)
-            return {
-                "used": stats["fs_usage"],
-                "total": stats["fs_size"],
+            filesystem_stats = statvfs(mountpoint)
+            file_stats = stat(file)
+
+            # note that "sparse" here might differ from metadata's
+            # "thin_provision": if the volume was created as thick but formatted
+            # with discarding, it's factually thin i.e. sparse
+            result = {
+                "physical_size": file_stats["physical_size"],
+                "logical_size": file_stats["logical_size"],
+                "used": filesystem_stats["fs_usage"],
+                "pool": pool,
+                "sparse": (file_stats["physical_size"] < file_stats["logical_size"])
+                or thin_provision,
+                "thin_provision": thin_provision,
             }
+            return result
         except (FileNotFoundError, KeyError):
             return None
 
@@ -272,6 +291,14 @@ class VolumeManager:
             volume_stats = self.get_volume_stats(volume_id)
             if volume_stats:
                 stats[volume_id] = self.get_volume_stats(volume_id)
+        return stats
+
+    def get_volumes_stats_by_pool(self, storage_pool: str) -> dict[str, VolumeStats]:
+        stats = {}
+        for volume_id in self.list_all_volumes():
+            volume_stats = self.get_volume_stats(volume_id)
+            if volume_stats and volume_stats["pool"] == storage_pool:
+                stats[volume_id] = volume_stats
         return stats
 
     def migrate_metadata(self, volume_id, target_version):

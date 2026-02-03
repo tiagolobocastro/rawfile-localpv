@@ -1,5 +1,12 @@
 import re
 import warnings
+import consts
+import json
+
+from filesystem.types import FileSystemName
+from typing import Annotated, Final, Literal
+from datetime import timedelta
+
 from pydantic_settings import (
     BaseSettings,
     CliSettingsSource,
@@ -7,7 +14,6 @@ from pydantic_settings import (
     PydanticBaseSettingsSource,
     SettingsConfigDict,
 )
-from filesystem.types import FileSystemName
 from pydantic import (
     AliasChoices,
     AnyUrl,
@@ -20,11 +26,9 @@ from pydantic import (
     model_validator,
 )
 from pydantic.networks import IPvAnyAddress
-from typing import Annotated, Final, Literal
-import consts
+
 from utils.logs import LoggingFormats
-from datetime import timedelta
-import json
+from utils.modeltypes import ReservedCapacityMode
 
 NAME_REGEX: Final[re.Pattern] = re.compile(
     r"^(?=.{1,253}$)(?!.*\.\.)([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)(\.([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?))*$"
@@ -51,18 +55,26 @@ class Capabilities(BaseModel):
 class StoragePool(BaseModel):
     path: DirectoryPath = Field(description="Path of the pool, Should be unique")
     reserved_capacity: (
-        ByteSize
-        | Annotated[
+        Annotated[
             str,
             StringConstraints(strip_whitespace=True, pattern=r"^\d+%$"),
         ]
+        | ByteSize
     ) = Field(
         default=ByteSize(0),
-        description="Reserves capacity of storage pool",
+        description="""Reserves some disk capacity for uses other than this driver. May be specified in percentage
+        of total capacity or in bytes with commonly used suffixes""",
+        # since the ByteSize parses '123%', union_mode='left_to_right' and
+        # annotated string coming first in the union matters
+        union_mode="left_to_right",
     )
-    capacity_override: ByteSize | None = Field(
-        default=None,
-        description="Overrides total capacity of storage pool",
+
+    reserved_capacity_mode: ReservedCapacityMode = Field(
+        default=ReservedCapacityMode.PLAIN,
+        description="""Defines reserved mode. `plain` means reserved capacity is set directly as-is;
+        `subtract-from-total` means effective reserved capacity is total capacity minus reserved_capacity.
+        Effectively, `subtract-from-total` is analogous to "reserve for this pool only", while "plain"
+        is "reserve for everything else but this pool".""",
     )
 
 

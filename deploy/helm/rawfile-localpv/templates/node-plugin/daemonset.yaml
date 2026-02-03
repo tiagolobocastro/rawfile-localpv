@@ -81,10 +81,6 @@ spec:
             - name: RESERVED_CAPACITY
               value: {{ .Values.reservedCapacity | toString | quote }}
             {{- end }}
-            {{- if .Values.capacityOverride }}
-            - name: CAPACITY_OVERRIDE
-              value: {{ .Values.capacityOverride | toString | quote }}
-            {{- end }}
             - name: CSI_DRIVER__GRPC_WORKERS
               value: {{ .Values.node.grpcWorkers | toString | quote }}
             - name: GA_ENABLED
@@ -136,9 +132,6 @@ spec:
                     {{- with .Values.reservedCapacity }}
                     , "reserved_capacity": "{{ . | toString }}"
                     {{- end }}
-                    {{- with .Values.capacityOverride }}
-                    , "capacity_override": "{{ . | toString }}"
-                    {{- end }}
                     }
                   {{- else }}
                   {{- $keys := keys .Values.node.storagePools | sortAlpha }}
@@ -148,8 +141,13 @@ spec:
                     {{- with (index $.Values.node.storagePools $name).reservedCapacity }}
                     , "reserved_capacity": "{{ . | toString }}"
                     {{- end }}
-                    {{- with (index $.Values.node.storagePools $name).capacityOverride }}
-                    , "capacity_override": "{{ . | toString }}"
+                    {{- with (index $.Values.node.storagePools $name).reservedCapacityMode }}
+                    , "reserved_capacity_mode": "{{ . | toString }}"
+                    {{- end }}
+                    {{- with (index $.Values.node.storagePools $name) }}
+                    {{- if hasKey . "accountVolumesFreeSpace" }}
+                    , "account_volumes_free_space": {{ .accountVolumesFreeSpace }}
+                    {{- end }}
                     {{- end }}
                   }{{ if lt (add1 $i) (len $keys) }},{{ end }}
                   {{- end }}

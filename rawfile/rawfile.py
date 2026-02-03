@@ -19,6 +19,7 @@ from analytics.ga4 import run_ping, shutdown_event_worker, run_event_worker
 from orchestrator.k8s import node_ip_mapping
 from utils.rawfile import is_cow_supported
 from utils.volume_manager import manager as volume_manager
+from utils.devices import stat
 from setproctitle import setproctitle
 import ipaddress
 import os
@@ -40,12 +41,21 @@ def node_driver_preflight_checks(task_manager: task_manager.TaskManager):
         raise RuntimeError("CSI Driver configuration is missing")
     if not config.csi_driver.metadata_dir:
         raise RuntimeError("Metadata directory is not set for node plugin")
+
     dirs = [
         config.csi_driver.metadata_dir,
     ]
     dirs.extend([pool.path for pool in config.csi_driver.storage_pools.values()])
     for dir in dirs:
         __create_and_check_directory(dir)
+
+    devs = set()
+    for path in [pool.path for pool in config.csi_driver.storage_pools.values()]:
+        dev = stat(path)["dev"]
+        if dev in devs:
+            raise RuntimeError("Multiple pools cannot be backed by the same filesystem")
+        devs.add(dev)
+
     volume_manager.migrate_metadata_dir()
     volume_manager.migrate_all_volume_schemas()
     task_manager.migrate_tasks_file_path()
