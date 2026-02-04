@@ -50,6 +50,9 @@ controller:
     pullPolicy: ""
 
   externalResizer:
+    # -- Sets compute resources for external-resizer container
+    resources:
+      {}
     image:
       # -- Image registry for `csi-resizer`
       registry: ""
@@ -91,6 +94,9 @@ node:
     pullPolicy: ""
 
   driverRegistrar:
+    # -- Sets compute resources for driver-registrar container
+    resources:
+      {}
     image:
       # -- Image Registry for `csi-node-driver-registrar`
       registry: ""
@@ -100,6 +106,9 @@ node:
       tag: v2.13.0
 
   externalProvisioner:
+    # -- Sets compute resources for external-provisioner container
+    resources:
+      {}
     image:
       # -- Image Registry for `csi-provisioner`
       registry: ""
@@ -109,6 +118,9 @@ node:
       tag: v5.2.0
 
   externalSnapshotter:
+    # -- Sets compute resources for external-snapshotter container
+    resources:
+      {}
     image:
       # -- Image Registry for `csi-snapshotter`
       registry: ""
@@ -118,6 +130,9 @@ node:
       tag: v8.2.1
 
   snapshotController:
+    # -- Sets compute resources for snapshot-controller container
+    resources:
+      {}
     image:
       # -- Image Registry for `snapshot-controller`
       registry: ""
@@ -150,12 +165,6 @@ node:
   # -- Sets compute resources for node component
   resources:
     {}
-    # limits:
-    #   cpu: 1
-    #   memory: 100Mi
-    # requests:
-    #   cpu: 10m
-    #   memory: 100Mi
   metrics:
     enabled: false
 

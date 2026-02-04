@@ -190,12 +190,7 @@ spec:
             - name: registration-dir
               mountPath: /registration
           resources:
-            limits:
-              cpu: 500m
-              memory: 100Mi
-            requests:
-              cpu: 10m
-              memory: 100Mi
+            {{- include "rawfile-localpv.node-driver-registrar-resources" . | nindent 12 }}
         - name: external-provisioner
           image: {{ printf "%s/%s:%s" (.Values.node.externalProvisioner.image.registry | default .Values.global.k8sImageRegistry) .Values.node.externalProvisioner.image.repository .Values.node.externalProvisioner.image.tag }}
           imagePullPolicy: IfNotPresent
@@ -228,6 +223,8 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+          resources:
+            {{- include "rawfile-localpv.node-external-provisioner-resources" . | nindent 12 }}
         - name: external-snapshotter
           image: {{ printf "%s/%s:%s" (.Values.node.externalSnapshotter.image.registry | default .Values.global.k8sImageRegistry) .Values.node.externalSnapshotter.image.repository .Values.node.externalSnapshotter.image.tag }}
           imagePullPolicy: IfNotPresent
@@ -245,9 +242,13 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+          resources:
+            {{- include "rawfile-localpv.node-external-snapshotter-resources" . | nindent 12 }}
         - name: snapshot-controller
           args:
             - "--v=2"
             - "--enable-distributed-snapshotting=true"
+          resources:
+            {{- include "rawfile-localpv.node-snapshot-controller-resources" . | nindent 12 }}
           image: {{ printf "%s/%s:%s" (.Values.node.snapshotController.image.registry | default .Values.global.k8sImageRegistry) .Values.node.snapshotController.image.repository .Values.node.snapshotController.image.tag }}
           imagePullPolicy: IfNotPresent
