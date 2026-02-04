@@ -32,6 +32,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |
 | controller.externalResizer.image.repository | string | `"sig-storage/csi-resizer"` | Image Repository for `csi-resizer` |
 | controller.externalResizer.image.tag | string | `"v1.13.2"` | Image tag for `csi-resizer` |
+| controller.externalResizer.resources | object | `{}` | Sets compute resources for external-resizer container |
 | controller.grpcWorkers | int | `10` | Number of gRPC workers for controller component |
 | controller.image.pullPolicy | string | `""` | Overrides default image pull policy for node component |
 | controller.image.repository | string | `""` | Overrides default image repository for node component |
@@ -62,12 +63,15 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.driverRegistrar.image.registry | string | `""` | Image Registry for `csi-node-driver-registrar` |
 | node.driverRegistrar.image.repository | string | `"sig-storage/csi-node-driver-registrar"` | Image Repository for `csi-node-driver-registrar` |
 | node.driverRegistrar.image.tag | string | `"v2.13.0"` | Image Tag for `csi-node-driver-registrar` |
+| node.driverRegistrar.resources | object | `{}` | Sets compute resources for driver-registrar container |
 | node.externalProvisioner.image.registry | string | `""` | Image Registry for `csi-provisioner` |
 | node.externalProvisioner.image.repository | string | `"sig-storage/csi-provisioner"` | Image Repository for `csi-provisioner` |
 | node.externalProvisioner.image.tag | string | `"v5.2.0"` | Image Tag for `csi-provisioner` |
+| node.externalProvisioner.resources | object | `{}` | Sets compute resources for external-provisioner container |
 | node.externalSnapshotter.image.registry | string | `""` | Image Registry for `csi-snapshotter` |
 | node.externalSnapshotter.image.repository | string | `"sig-storage/csi-snapshotter"` | Image Repository for `csi-snapshotter` |
 | node.externalSnapshotter.image.tag | string | `"v8.2.1"` | Image Tag for `csi-snapshotter` |
+| node.externalSnapshotter.resources | object | `{}` | Sets compute resources for external-snapshotter container |
 | node.grpcWorkers | int | `10` | Number of gRPC workers for node component |
 | node.image.pullPolicy | string | `""` | Overrides default image pull policy for node component |
 | node.image.repository | string | `""` | Overrides default image repository for node component |
@@ -82,6 +86,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.snapshotController.image.registry | string | `""` | Image Registry for `snapshot-controller` |
 | node.snapshotController.image.repository | string | `"sig-storage/snapshot-controller"` | Image Repository for `snapshot-controller` |
 | node.snapshotController.image.tag | string | `"v8.2.1"` | Image Tag for `snapshot-controller` |
+| node.snapshotController.resources | object | `{}` | Sets compute resources for snapshot-controller container |
 | node.tolerations | string | `nil` | Tolerations for node component |
 | provisionerName | string | `"rawfile.csi.openebs.io"` | Name of the registered CSI Driver in the cluster |
 | reservedCapacity | string | `""` | Used to reserve capacity on each node for data dir storage on each host (Supports percentage and size) [e.g. `25%` or `50GB` or `10MiB`] (Deprecated, use storagePools.reservedCapacity instead) |
