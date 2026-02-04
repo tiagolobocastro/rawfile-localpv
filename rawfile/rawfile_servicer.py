@@ -58,21 +58,22 @@ class RawFileIdentityServicer(csi_pb2_grpc.IdentityServicer):
     @log_grpc_request
     def GetPluginCapabilities(self, request, context):
         Cap = csi_pb2.PluginCapability
-        return csi_pb2.GetPluginCapabilitiesResponse(
-            capabilities=[
-                Cap(service=Cap.Service(type=Cap.Service.CONTROLLER_SERVICE)),
-                Cap(
-                    service=Cap.Service(
-                        type=Cap.Service.VOLUME_ACCESSIBILITY_CONSTRAINTS
+        capabilities = [
+            Cap(service=Cap.Service(type=Cap.Service.CONTROLLER_SERVICE)),
+            Cap(service=Cap.Service(type=Cap.Service.VOLUME_ACCESSIBILITY_CONSTRAINTS)),
+        ]
+        if config.csi_driver.capabilities.resize.enabled:
+            capabilities.extend(
+                [
+                    Cap(
+                        volume_expansion=Cap.VolumeExpansion(
+                            type=Cap.VolumeExpansion.ONLINE
+                        )
                     )
-                ),
-                Cap(
-                    volume_expansion=Cap.VolumeExpansion(
-                        type=Cap.VolumeExpansion.ONLINE
-                    )
-                ),
-            ]
-        )
+                ]
+            )
+
+        return csi_pb2.GetPluginCapabilitiesResponse(capabilities=capabilities)
 
     # @log_grpc_request
     def Probe(self, request, context):
@@ -86,13 +87,17 @@ class RawFileNodeServicer(csi_pb2_grpc.NodeServicer):
     # @log_grpc_request
     def NodeGetCapabilities(self, request, context):
         Cap = csi_pb2.NodeServiceCapability
-        return csi_pb2.NodeGetCapabilitiesResponse(
-            capabilities=[
-                Cap(rpc=Cap.RPC(type=Cap.RPC.STAGE_UNSTAGE_VOLUME)),
-                Cap(rpc=Cap.RPC(type=Cap.RPC.GET_VOLUME_STATS)),
-                Cap(rpc=Cap.RPC(type=Cap.RPC.EXPAND_VOLUME)),
-            ]
-        )
+        capabilities = [
+            Cap(rpc=Cap.RPC(type=Cap.RPC.STAGE_UNSTAGE_VOLUME)),
+            Cap(rpc=Cap.RPC(type=Cap.RPC.GET_VOLUME_STATS)),
+        ]
+        if config.csi_driver.capabilities.resize.enabled:
+            capabilities.extend(
+                [
+                    Cap(rpc=Cap.RPC(type=Cap.RPC.EXPAND_VOLUME)),
+                ]
+            )
+        return csi_pb2.NodeGetCapabilitiesResponse(capabilities=capabilities)
 
     @log_grpc_request
     def NodePublishVolume(self, request, context):
@@ -156,6 +161,12 @@ class RawFileNodeServicer(csi_pb2_grpc.NodeServicer):
 
     @log_grpc_request
     def NodeExpandVolume(self, request, context):
+        if not config.csi_driver.capabilities.resize.enabled:
+            context.abort(
+                grpc.StatusCode.UNIMPLEMENTED,
+                "Resizing capabilities are disabled.",
+            )
+
         volume_path = request.volume_path
         size = request.capacity_range.required_bytes
         volume_path = Path(volume_path).resolve()
@@ -171,16 +182,26 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
     @log_grpc_request
     def ControllerGetCapabilities(self, request, context):
         Cap = csi_pb2.ControllerServiceCapability
-        return csi_pb2.ControllerGetCapabilitiesResponse(
-            capabilities=[
-                Cap(rpc=Cap.RPC(type=Cap.RPC.CREATE_DELETE_VOLUME)),
-                Cap(rpc=Cap.RPC(type=Cap.RPC.GET_CAPACITY)),
-                Cap(rpc=Cap.RPC(type=Cap.RPC.EXPAND_VOLUME)),
-                Cap(rpc=Cap.RPC(type=Cap.RPC.CREATE_DELETE_SNAPSHOT)),
-                Cap(rpc=Cap.RPC(type=Cap.RPC.LIST_SNAPSHOTS)),
-                Cap(rpc=Cap.RPC(type=Cap.RPC.CLONE_VOLUME)),
-            ]
-        )
+        capabilities = [
+            Cap(rpc=Cap.RPC(type=Cap.RPC.CREATE_DELETE_VOLUME)),
+            Cap(rpc=Cap.RPC(type=Cap.RPC.GET_CAPACITY)),
+        ]
+        if config.csi_driver.capabilities.snapshots.enabled:
+            capabilities.extend(
+                [
+                    Cap(rpc=Cap.RPC(type=Cap.RPC.CREATE_DELETE_SNAPSHOT)),
+                    Cap(rpc=Cap.RPC(type=Cap.RPC.LIST_SNAPSHOTS)),
+                    Cap(rpc=Cap.RPC(type=Cap.RPC.CLONE_VOLUME)),
+                ]
+            )
+        if config.csi_driver.capabilities.resize.enabled:
+            capabilities.extend(
+                [
+                    Cap(rpc=Cap.RPC(type=Cap.RPC.EXPAND_VOLUME)),
+                ]
+            )
+
+        return csi_pb2.ControllerGetCapabilitiesResponse(capabilities=capabilities)
 
     @log_grpc_request
     def CreateVolume(self, request: csi_pb2.CreateVolumeRequest, context):
@@ -234,6 +255,15 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
                 source_type = VolumeSource.volume
                 source_id = request.volume_content_source.volume.volume_id
                 required_space = required_space * 3
+
+        if not config.csi_driver.capabilities.snapshots.enabled and (
+            source_type == VolumeSource.volume or source_type == VolumeSource.snapshot
+        ):
+            context.abort(
+                grpc.StatusCode.UNIMPLEMENTED,
+                "Snapshotting capabilities are disabled.",
+            )
+
         if utils.storage_pool.get_capacity() < required_space:
             context.abort(
                 grpc.StatusCode.RESOURCE_EXHAUSTED,
@@ -304,6 +334,12 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def ControllerExpandVolume(self, request, context):
+        if not config.csi_driver.capabilities.resize.enabled:
+            context.abort(
+                grpc.StatusCode.UNIMPLEMENTED,
+                "Resizing capabilities are disabled.",
+            )
+
         volume_id = request.volume_id
         node_name = volume_to_node(volume_id)
         size = request.capacity_range.required_bytes

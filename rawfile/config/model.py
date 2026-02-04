@@ -31,6 +31,23 @@ NAME_REGEX: Final[re.Pattern] = re.compile(
 )
 
 
+class BaseCapability(BaseModel):
+    enabled: bool
+
+
+class SnapshotsCapability(BaseCapability):
+    pass
+
+
+class ResizeCapability(BaseCapability):
+    pass
+
+
+class Capabilities(BaseModel):
+    resize: ResizeCapability
+    snapshots: SnapshotsCapability
+
+
 class StoragePool(BaseModel):
     path: DirectoryPath = Field(description="Path of the pool, Should be unique")
     reserved_capacity: (
@@ -108,6 +125,13 @@ class CSIDriverCmd(BaseModel):
     )
     plugin_type: Literal["controller", "node"] = Field(
         description="Type/Mode of the CSI plugin"
+    )
+    capabilities: Capabilities = Field(
+        default=Capabilities(
+            resize=ResizeCapability(enabled=True),
+            snapshots=SnapshotsCapability(enabled=True),
+        ),
+        description="Controls capabilities of the CSI driver",
     )
 
     @field_validator("storage_pools", mode="before")
