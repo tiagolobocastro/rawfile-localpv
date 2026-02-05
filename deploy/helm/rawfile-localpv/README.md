@@ -27,6 +27,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | auth.enabled | bool | `true` | Enables authentication for internal gRPC server |
+| auth.secretName | string | `""` | If managing secrets outside the chart, use this to reference the secret name; otherwise, leave empty. |
 | auth.token | string | `""` | Sets authentication token for internal gRPC server, will generate one if nothing provided |
 | capacityOverride | string | `""` | Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`] (Deprecated, use storagePools.capacityOverride instead) |
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |

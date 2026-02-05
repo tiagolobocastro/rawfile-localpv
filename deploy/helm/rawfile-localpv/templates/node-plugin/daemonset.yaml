@@ -105,7 +105,11 @@ spec:
             - name: CSI_DRIVER__INTERNAL_SIGNATURE
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.auth.secretName }}
+                  name: {{ .Values.auth.secretName }}
+                  {{- else }}
                   name: {{ include "rawfile-localpv.fullname" . }}-secrets
+                  {{- end }}
                   key: internal-signature
             {{- end }}
             - name: CSI_DRIVER__DEFAULT_FS

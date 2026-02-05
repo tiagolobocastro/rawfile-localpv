@@ -16,6 +16,8 @@ auth:
   enabled: true
   # -- Sets authentication token for internal gRPC server, will generate one if nothing provided
   token: ""
+  # -- If managing secrets outside the chart, use this to reference the secret name; otherwise, leave empty.
+  secretName: ""
 
 global:
   # -- Default image registry for Images from DockerHub
