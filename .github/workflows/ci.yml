@@ -14,5 +14,5 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - name: CI succeeded
+      - name: CI succeededddd
         run: exit 0
