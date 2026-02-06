@@ -3,10 +3,8 @@ queue_rules:
     update_method: rebase
     branch_protection_injection_mode: merge
     merge_conditions:
-      - and:
-        - check-success = ci
+      - check-success = ci
     queue_conditions:
-      - and:
-        - check-success = ci
+      - check-success = ci
 merge_queue:
   max_parallel_checks: 1
