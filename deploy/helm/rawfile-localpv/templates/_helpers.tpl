@@ -87,6 +87,10 @@ Some helpers to handle image global information
 {{- toYaml (.Values.controller.resources) }}
 {{- end }}
 
+{{- define "rawfile-localpv.controller-external-resizer-resources" -}}
+{{- toYaml (.Values.controller.externalResizer.resources) }}
+{{- end }}
+
 {{- define "rawfile-localpv.node-image-tag" -}}
 {{- $imageTag := .Values.node.image.tag | default .Values.image.tag | default (printf "v%s" .Chart.AppVersion) }}
 {{- printf "%s" $imageTag }}
@@ -111,6 +115,22 @@ Some helpers to handle image global information
 
 {{- define "rawfile-localpv.node-resources" -}}
 {{- toYaml (.Values.node.resources) }}
+{{- end }}
+
+{{- define "rawfile-localpv.node-driver-registrar-resources" -}}
+{{- toYaml (.Values.node.driverRegistrar.resources) }}
+{{- end }}
+
+{{- define "rawfile-localpv.node-external-provisioner-resources" -}}
+{{- toYaml (.Values.node.externalProvisioner.resources) }}
+{{- end }}
+
+{{- define "rawfile-localpv.node-external-snapshotter-resources" -}}
+{{- toYaml (.Values.node.externalSnapshotter.resources) }}
+{{- end }}
+
+{{- define "rawfile-localpv.node-snapshot-controller-resources" -}}
+{{- toYaml (.Values.node.snapshotController.resources) }}
 {{- end }}
 
 {{- define "rawfile-localpv.node-kubelet-path" -}}
