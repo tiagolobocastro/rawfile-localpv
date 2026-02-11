@@ -17,6 +17,10 @@ spec:
       priorityClassName: {{ .Values.controller.priorityClassName }}
       tolerations:
         {{- .Values.controller.tolerations | toYaml | nindent 8 }}
+      nodeSelector:
+        {{- .Values.controller.nodeSelector | toYaml | nindent 8 }}
+      affinity:
+        {{- .Values.controller.affinity | toYaml | nindent 8 }}
       volumes:
         - name: socket-dir
           emptyDir: {}
@@ -83,9 +87,6 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-          ports:
-            - name: csi-probe
-              containerPort: 9808
           resources:
             {{- include "rawfile-localpv.controller-resources" . | nindent 12 }}
         - name: external-resizer
