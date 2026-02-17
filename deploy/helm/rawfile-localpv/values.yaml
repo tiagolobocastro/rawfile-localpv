@@ -83,6 +83,12 @@ controller:
       value: "true"
       effect: NoSchedule
 
+  # -- nodeSelector for controller component
+  nodeSelector:
+
+  # -- Affinities for controller component
+  affinity:
+
   # -- Number of gRPC workers for controller component
   grpcWorkers: 10
 
@@ -95,6 +101,9 @@ node:
     # -- Overrides default image pull policy for node component
     pullPolicy: ""
 
+  # -- Enables hostNetwork for node component
+  hostNetwork: false
+
   driverRegistrar:
     # -- Sets compute resources for driver-registrar container
     resources:
@@ -106,6 +115,9 @@ node:
       repository: sig-storage/csi-node-driver-registrar
       # -- Image Tag for `csi-node-driver-registrar`
       tag: v2.13.0
+
+    # -- Healthcheck port for driver-registrar
+    healthzPort: 9809
 
   externalProvisioner:
     # -- Sets compute resources for external-provisioner container
@@ -175,6 +187,12 @@ node:
 
   # -- Tolerations for node component
   tolerations:
+
+  # -- nodeSelector for node component
+  nodeSelector:
+
+  # -- Affinities for node component
+  affinity:
 
   # -- Number of gRPC workers for node component
   grpcWorkers: 10

@@ -30,6 +30,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | auth.secretName | string | `""` | If managing secrets outside the chart, use this to reference the secret name; otherwise, leave empty. |
 | auth.token | string | `""` | Sets authentication token for internal gRPC server, will generate one if nothing provided |
 | capacityOverride | string | `""` | Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`] (Deprecated, use storagePools.capacityOverride instead) |
+| controller.affinity | string | `nil` | Affinities for controller component |
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |
 | controller.externalResizer.image.repository | string | `"sig-storage/csi-resizer"` | Image Repository for `csi-resizer` |
 | controller.externalResizer.image.tag | string | `"v1.13.2"` | Image tag for `csi-resizer` |
@@ -38,6 +39,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | controller.image.pullPolicy | string | `""` | Overrides default image pull policy for node component |
 | controller.image.repository | string | `""` | Overrides default image repository for node component |
 | controller.image.tag | string | `""` | Overrides default image tag for node component |
+| controller.nodeSelector | string | `nil` | nodeSelector for controller component |
 | controller.priorityClassName | string | `"system-cluster-critical"` | priorityClassName for controller component since this part is critical for cluster `system-cluster-critical` is default |
 | controller.resources | object | `{}` | Sets compute resources for controller component |
 | controller.tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/master","operator":"Equal","value":"true"}]` | Tolerations for controller component |
@@ -59,8 +61,10 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | metrics.port | int | `9100` | Sets metrics port |
 | metrics.serviceMonitor.enabled | bool | `false` | Enables prometheus service monitor |
 | metrics.serviceMonitor.interval | string | `"1m"` | Sets prometheus target interval |
+| node.affinity | string | `nil` | Affinities for node component |
 | node.dataDirPath | string | `"/var/csi/rawfile"` | Path to store data dir (Depricated, use storagePools.path instead) |
 | node.defaultFs | string | `"ext4"` | Default filesystem type for rawfile volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default]) |
+| node.driverRegistrar.healthzPort | int | `9809` | Healthcheck port for driver-registrar |
 | node.driverRegistrar.image.registry | string | `""` | Image Registry for `csi-node-driver-registrar` |
 | node.driverRegistrar.image.repository | string | `"sig-storage/csi-node-driver-registrar"` | Image Repository for `csi-node-driver-registrar` |
 | node.driverRegistrar.image.tag | string | `"v2.13.0"` | Image Tag for `csi-node-driver-registrar` |
@@ -74,6 +78,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.externalSnapshotter.image.tag | string | `"v8.2.1"` | Image Tag for `csi-snapshotter` |
 | node.externalSnapshotter.resources | object | `{}` | Sets compute resources for external-snapshotter container |
 | node.grpcWorkers | int | `10` | Number of gRPC workers for node component |
+| node.hostNetwork | bool | `false` | Enables hostNetwork for node component |
 | node.image.pullPolicy | string | `""` | Overrides default image pull policy for node component |
 | node.image.repository | string | `""` | Overrides default image repository for node component |
 | node.image.tag | string | `""` | Overrides default image tag for node component |
@@ -82,6 +87,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.kubeletPath | string | `"/var/lib/kubelet"` | Kubelet path (Set to `/var/lib/k0s/kubelet` for k0s) |
 | node.metadataDirPath | string | `"/var/local/openebs/rawfile/{{ .Release.Name }}/meta"` | Metadata dir path for rawfile volumes metadata and tasks store file |
 | node.metrics.enabled | bool | `false` |  |
+| node.nodeSelector | string | `nil` | nodeSelector for node component |
 | node.priorityClassName | string | `"system-node-critical"` | priorityClassName for node component since this part is critical for node `system-node-critical` is default |
 | node.resources | object | `{}` | Sets compute resources for node component |
 | node.snapshotController.image.registry | string | `""` | Image Registry for `snapshot-controller` |
