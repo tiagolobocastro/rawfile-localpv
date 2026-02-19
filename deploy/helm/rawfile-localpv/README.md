@@ -29,6 +29,8 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | auth.enabled | bool | `true` | Enables authentication for internal gRPC server |
 | auth.secretName | string | `""` | If managing secrets outside the chart, use this to reference the secret name; otherwise, leave empty. |
 | auth.token | string | `""` | Sets authentication token for internal gRPC server, will generate one if nothing provided |
+| capabilities.resize.enabled | bool | `true` | Sets whether volume resizing is enabled. If disabled, don't deploy controller statefulset |
+| capabilities.snapshots.enabled | bool | `true` | Sets whether taking volume snapshots is enabled. Required for volume cloning. Runs externalSnapshotter and snapshotController containers. |
 | capacityOverride | string | `""` | Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`] (Deprecated, use storagePools.capacityOverride instead) |
 | controller.affinity | string | `nil` | Affinities for controller component |
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |

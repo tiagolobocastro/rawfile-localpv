@@ -262,3 +262,11 @@ crds:
     volumeSnapshots:
       # -- Install Volume Snapshot CRDs
       enabled: true
+
+capabilities:
+  snapshots:
+    # -- Sets whether taking volume snapshots is enabled. Required for volume cloning. Runs externalSnapshotter and snapshotController containers.
+    enabled: true
+  resize:
+    # -- Sets whether volume resizing is enabled. If disabled, don't deploy controller statefulset
+    enabled: true

@@ -290,11 +290,23 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def ControllerExpandVolume(self, request, context):
+        if not config.csi_driver.capabilities.resize.enabled:
+            context.abort(
+                grpc.StatusCode.UNIMPLEMENTED,
+                "Resizing capabilities are disabled.",
+            )
+
         response = self.bds.ControllerExpandVolume(request, context)
         return response
 
     @log_grpc_request
     def CreateSnapshot(self, request: csi_pb2.CreateSnapshotRequest, context):
+        if not config.csi_driver.capabilities.snapshots.enabled:
+            context.abort(
+                grpc.StatusCode.UNIMPLEMENTED,
+                "Snapshotting capabilities are disabled.",
+            )
+
         with VolLock(request.source_volume_id):
             volume_meta = metadata(request.source_volume_id)
             freezefs = volume_meta.get("freezefs", False)
@@ -359,6 +371,11 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def DeleteSnapshot(self, request: csi_pb2.DeleteSnapshotRequest, context):
+        if not config.csi_driver.capabilities.snapshots.enabled:
+            context.abort(
+                grpc.StatusCode.UNIMPLEMENTED,
+                "Snapshotting capabilities are disabled.",
+            )
         snapshot_id = request.snapshot_id
         volume_id, name = snapshot_id.rsplit("/", 1)
         if (
@@ -388,6 +405,11 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
 
     @log_grpc_request
     def ListSnapshots(self, request: csi_pb2.ListSnapshotsRequest, context):
+        if not config.csi_driver.capabilities.snapshots.enabled:
+            context.abort(
+                grpc.StatusCode.UNIMPLEMENTED,
+                "Snapshotting capabilities are disabled.",
+            )
         volume_id, name = None, None
         if request.snapshot_id:
             snapshot_id = request.snapshot_id

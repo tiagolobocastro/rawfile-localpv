@@ -1,3 +1,4 @@
+{{- if .Values.capabilities.resize.enabled }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -84,6 +85,10 @@ spec:
                   {{- end }}
                   key: internal-signature
             {{- end }}
+            - name: CSI_DRIVER__CAPABILITIES__SNAPSHOTS__ENABLED
+              value: "{{ .Values.capabilities.snapshots.enabled }}"
+            - name: CSI_DRIVER__CAPABILITIES__RESIZE__ENABLED
+              value: "{{ .Values.capabilities.resize.enabled }}"
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -104,3 +109,4 @@ spec:
               mountPath: /csi
           resources:
             {{- include "rawfile-localpv.controller-external-resizer-resources" . | nindent 12 }}
+{{- end }}

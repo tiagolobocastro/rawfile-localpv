@@ -155,7 +155,10 @@ spec:
                   {{- end }}
                   {{- end }}
                 }
-
+            - name: CSI_DRIVER__CAPABILITIES__SNAPSHOTS__ENABLED
+              value: "{{ .Values.capabilities.snapshots.enabled }}"
+            - name: CSI_DRIVER__CAPABILITIES__RESIZE__ENABLED
+              value: "{{ .Values.capabilities.resize.enabled }}"
           ports:
             - name: metrics
               containerPort: {{ .Values.metrics.port }}
@@ -234,6 +237,7 @@ spec:
               mountPath: /csi
           resources:
             {{- include "rawfile-localpv.node-external-provisioner-resources" . | nindent 12 }}
+        {{- if .Values.capabilities.snapshots.enabled }}
         - name: external-snapshotter
           image: {{ printf "%s/%s:%s" (.Values.node.externalSnapshotter.image.registry | default .Values.global.k8sImageRegistry) .Values.node.externalSnapshotter.image.repository .Values.node.externalSnapshotter.image.tag }}
           imagePullPolicy: IfNotPresent
@@ -253,6 +257,8 @@ spec:
               mountPath: /csi
           resources:
             {{- include "rawfile-localpv.node-external-snapshotter-resources" . | nindent 12 }}
+        {{- end }}
+        {{- if .Values.capabilities.snapshots.enabled }}
         - name: snapshot-controller
           args:
             - "--v=2"
@@ -261,3 +267,4 @@ spec:
             {{- include "rawfile-localpv.node-snapshot-controller-resources" . | nindent 12 }}
           image: {{ printf "%s/%s:%s" (.Values.node.snapshotController.image.registry | default .Values.global.k8sImageRegistry) .Values.node.snapshotController.image.repository .Values.node.snapshotController.image.tag }}
           imagePullPolicy: IfNotPresent
+        {{- end }}
