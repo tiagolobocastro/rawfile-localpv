@@ -54,10 +54,6 @@ spec:
             - name: RESERVED_CAPACITY
               value: {{ .Values.reservedCapacity | toString | quote }}
             {{- end }}
-            {{- if .Values.capacityOverride }}
-            - name: CAPACITY_OVERRIDE
-              value: {{ .Values.capacityOverride | toString | quote }}
-            {{- end }}
             - name: CSI_DRIVER__GRPC_WORKERS
               value: {{ .Values.controller.grpcWorkers | toString | quote }}
             - name: GA_ENABLED

@@ -1,26 +1,40 @@
-from pydantic import ByteSize
-from utils.commands import run
 import os
 import subprocess
 import json
+
 from pathlib import Path
 
+from utils.commands import run
 
-def path_stats(path, capacity_override: ByteSize | None = None):
+
+def statvfs(path):
     fs_stat = os.statvfs(path)
 
     total = fs_stat.f_frsize * fs_stat.f_blocks
-    if capacity_override:
-        total = capacity_override.to("B")
     avail = fs_stat.f_frsize * fs_stat.f_bavail
+    # FIXME (pgu, 09.02.2026): this is not necessarily true in the sense that
+    # f_bavail shows blocks available to non-privileged users; hence usage will
+    # implicitly include all the blocks reserved for priviliged users in the
+    # stats
     usage = total - avail
 
     return {
         "fs_size": total,
-        "fs_avail": total - usage,
+        "fs_avail": avail,
         "fs_usage": usage,
         "fs_files": fs_stat.f_files,
         "fs_files_avail": fs_stat.f_favail,
+        "fs_id": fs_stat.f_fsid,
+    }
+
+
+def stat(filepath):
+    stat = os.stat(filepath)
+
+    return {
+        "logical_size": stat.st_size,
+        "physical_size": stat.st_blocks * 512,
+        "dev": stat.st_dev,
     }
 
 

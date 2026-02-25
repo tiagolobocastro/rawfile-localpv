@@ -31,7 +31,6 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | auth.token | string | `""` | Sets authentication token for internal gRPC server, will generate one if nothing provided |
 | capabilities.resize.enabled | bool | `true` | Sets whether volume resizing is enabled. If disabled, don't deploy controller statefulset |
 | capabilities.snapshots.enabled | bool | `true` | Sets whether taking volume snapshots is enabled. Required for volume cloning. Runs externalSnapshotter and snapshotController containers. |
-| capacityOverride | string | `""` | Overrides total capacity of the storage for data dir storage on each host (Support size values) [e.g. `50GB` or `10MiB`] (Deprecated, use storagePools.capacityOverride instead) |
 | controller.affinity | string | `nil` | Affinities for controller component |
 | controller.externalResizer.image.registry | string | `""` | Image registry for `csi-resizer` |
 | controller.externalResizer.image.repository | string | `"sig-storage/csi-resizer"` | Image Repository for `csi-resizer` |
@@ -64,7 +63,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | metrics.serviceMonitor.enabled | bool | `false` | Enables prometheus service monitor |
 | metrics.serviceMonitor.interval | string | `"1m"` | Sets prometheus target interval |
 | node.affinity | string | `nil` | Affinities for node component |
-| node.dataDirPath | string | `"/var/csi/rawfile"` | Path to store data dir (Depricated, use storagePools.path instead) |
+| node.dataDirPath | string | `"/var/csi/rawfile"` | Path to store data dir (Deprecated, use storagePools.path instead) |
 | node.defaultFs | string | `"ext4"` | Default filesystem type for rawfile volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default]) |
 | node.driverRegistrar.healthzPort | int | `9809` | Healthcheck port for driver-registrar |
 | node.driverRegistrar.image.registry | string | `""` | Image Registry for `csi-node-driver-registrar` |
