@@ -32,7 +32,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs-only == 'false' }}
     uses: ./.github/workflows/k8s.yml
   ci:
-    if: ${{ success() }}
+    if: ${{ success() || needs.changes.outputs.docs-only == 'true' }}
     needs:
       - helm-ci
       - k8s-ci
