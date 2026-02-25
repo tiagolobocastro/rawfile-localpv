@@ -22,6 +22,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Issues 🚫
 
 - ReadOnly attribute in PVC template not fully handled
+- When using thin provisioning, user must specify the format options preventing `mkfs` from discarding blocks (`-K` for xfs/btrfs, `-E nodiscard` for ext4). Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/295)
+- Prometheus metrics use capacity sum across all the pools, instead of values per pool. This may lead to confusing results. Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/294)
+- For ext4, volumes available space might be smaller than intended due to defaulting to reserve 5% of the blocks for privileged users. This can be circumvented via format options (`-m 0`)
+
+---
+
+## [v0.13.0] - 2026-02-25 ⚠️ Breaking Changes
+
+### Added ✨
+- Application:
+  - Ban multiple storage pools backed by the same filesystem ⚠️
+
+- Helm chart:
+  - `hostNetwork` switch for the node component enabling `hostNetwork` mode
+  - Customize ports
+  - Specify `affinity` and `nodeSelector`
+  - Specify `auth.secretName` to enable managing authentication secret outside of the chart
+  - Specify resources explicitly for every container
+
+- Both:
+  - Turn undesired capabilities off to save resources (see `capabilities`)
+  - Add `reserved_capacity_mode` switch determining how reserved capacity is calculated. It is now possible to reserve capacity just for the pool, or for everything else but the pool
+
+### Fixed 🐛
+
+- Fix `reserved_capacity` parsing that could lead to undesired results (e.g. "10%" parsed as 10 bytes)
+
+### Changed ♻️
+
+- Capacity calculations account only for actual allocated blocks as opposed to logical size of the files. This changes the calculations for thin (i.e. sparse) backing files ⚠️
+- Reserved capacity is calculated based on total space as opposed to free ⚠️
+
+### Removed 🗑️
+
+- Remove `capacity_override` chart parameter (not a breaking change as it was not factually changing calculations)
+
+### Internal 🔧
+
+### Known Issues 🚫
+
+- ReadOnly attribute in PVC template not fully handled
+- When using thin provisioning, user must specify the format options preventing `mkfs` from discarding blocks (`-K` for xfs/btrfs, `-E nodiscard` for ext4). Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/295)
+- Prometheus metrics use capacity sum across all the pools, instead of values per pool. This may lead to confusing results. Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/294)
+- For ext4, volumes available space might be smaller than intended due to defaulting to reserve 5% of the blocks for privileged users. This can be circumvented via format options (`-m 0`)
+
+---
 
 ## [v0.12.2] - 2025/12/08
 
