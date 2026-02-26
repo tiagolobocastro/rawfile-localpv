@@ -26,13 +26,25 @@ Don't blind upgrade to a potentially breaking version as additional steps may be
 
 We try to do our best to follow [semantic versioning](https://semver.org/), but mistakes can happen. If you encounter any unexpected breaking change from our part, please do let us know!
 
+### Upgrading to v0.13.0
+
+This version introduces the following breaking changes:
+
+  - Deprecate `node.dataDirPath` and `reservedCapacity` in favor of storage pool specific values \
+  If you defined these to be different than defaults, migrate them to `node.storagePools.default` (or any other pool you create and choose to be your default pool, along with defined storage classes). \
+  If you continue to use `node.dataDirPath`, a default pool named "data-dir" will be created for you, however this will be removed in the future versions.
+  - Capacity calculations account only for actual allocated blocks as opposed to logical size of the files. This changes the calculations for thin (i.e. sparse) backing files and enables overprovisioning \
+  If you relied on the fact overprovisioning is impossible even when using thin provisioning, this release changes that. If you'd like to opt out of overprovisioning, use thick provisioning without discarding blocks during formatting (for more, see this [issue](https://github.com/openebs/rawfile-localpv/issues/295)). On the other hand, if you wanted to overprovision, just use thin provisioning.
+  - Reserved capacity is calculated based on total space as opposed to free \
+  Be cautios that available capacity calculations will change after the upgrade if `reservedCapacity` was non-zero.
+
 ### Upgrading to v0.12.0
 
 This version introduces the following breaking changes:
 
-- Btrfs snapshots has been deprecated
+- Btrfs snapshots has been deprecated \
   New snapshots cannot be taken but we still allow deleting existing ones.
-- Separate Data and Metadata dir
+- Separate Data and Metadata dir \
   The metadata defaults to $DATA/meta and the data is copied automatically by the node plugin
 
 ### Upgrading to v0.11.0
@@ -41,9 +53,9 @@ This version introduces the following breaking changes:
 
 - Volumes are thick provisioned by default  \
   To retain existing thin behaviour you may set `thinProvision` storage class parameter to `false`
-- Manifest install file has been removed
+- Manifest install file has been removed \
   Please use the helm chart package going forward. You may also generate equivalent file with `helm template`
-- Analytics have been added and enabled default
+- Analytics have been added and enabled default \
   We'd appreciate it if you kept them enabled, but of course you may disable them through the helm var `.globals.analytics.enabled`
 
 ## Uninstall
