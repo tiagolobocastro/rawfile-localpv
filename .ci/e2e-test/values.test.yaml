@@ -20,4 +20,3 @@ node:
     default:
       path: /var/local/openebs/rawfile/default-pool/
       reservedCapacity: ""
-      capacityOverride: ""
