@@ -285,7 +285,7 @@ class Bd2FsControllerServicer(csi_pb2_grpc.ControllerServicer):
     def DeleteVolume(self, request, context):
         return self.bds.DeleteVolume(request, context)
 
-    def GetCapacity(self, request, context):
+    def GetCapacity(self, request: csi_pb2.GetCapacityRequest, context):
         return self.bds.GetCapacity(request, context)
 
     @log_grpc_request
