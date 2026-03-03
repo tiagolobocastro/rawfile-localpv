@@ -28,11 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.13.0] - 2026-02-25 ⚠️ Breaking Changes
+## [v0.13.0] - 2026-02-26 ⚠️ Breaking Changes
 
 ### Added ✨
 - Application:
-  - Ban multiple storage pools backed by the same filesystem ⚠️
+  - Introduce storage pools, allowing to have multiple filesystems backing provisioned volumes on a single node ⚠️
+    - Deprecate `node.dataDirPath` and `reservedCapacity` in favor of storage pool specific values ⚠️
+    - Add `storagePool` parameter to storage class definition to tie a given class to a pool
+    - Add `defaultPool` parameter to be used if no pool is specified explicitly
+  - Turn undesired capabilities off to save resources (see `capabilities`)
+  - Add `reservedCapacityMode` switch determining how reserved capacity is calculated. It is now possible to reserve capacity just for the storage pool, or for everything else but the pool
 
 - Helm chart:
   - `hostNetwork` switch for the node component enabling `hostNetwork` mode
@@ -41,22 +46,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Specify `auth.secretName` to enable managing authentication secret outside of the chart
   - Specify resources explicitly for every container
 
-- Both:
-  - Turn undesired capabilities off to save resources (see `capabilities`)
-  - Add `reserved_capacity_mode` switch determining how reserved capacity is calculated. It is now possible to reserve capacity just for the pool, or for everything else but the pool
-
 ### Fixed 🐛
 
-- Fix `reserved_capacity` parsing that could lead to undesired results (e.g. "10%" parsed as 10 bytes)
+- Fix `reservedCapacity` parsing that could lead to undesired results (e.g. "10%" parsed as 10 bytes)
 
 ### Changed ♻️
 
-- Capacity calculations account only for actual allocated blocks as opposed to logical size of the files. This changes the calculations for thin (i.e. sparse) backing files ⚠️
+- Capacity calculations account only for actual allocated blocks as opposed to logical size of the files. This changes the calculations for thin (i.e. sparse) backing files and enables overprovisioning ⚠️
 - Reserved capacity is calculated based on total space as opposed to free ⚠️
 
 ### Removed 🗑️
 
-- Remove `capacity_override` chart parameter (not a breaking change as it was not factually changing calculations)
+- Remove `capacity_override` chart parameter (not a breaking change as it was not factually affecting calculations)
 
 ### Internal 🔧
 
