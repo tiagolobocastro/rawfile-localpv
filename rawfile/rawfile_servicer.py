@@ -327,9 +327,16 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
         except VolumeInUseError:
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Volume in use")
 
-    def GetCapacity(self, request, context):
+    def GetCapacity(self, request: csi_pb2.GetCapacityRequest, context):
+        params = normalize_parameters(request.parameters)
+        storage_pool = params.get("storagepool", config.csi_driver.default_pool)
+        if storage_pool not in config.csi_driver.storage_pools.keys():
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                f"Invalid storage pool '{storage_pool}'. Available pools: {list(config.csi_driver.storage_pools.keys())}",
+            )
         return csi_pb2.GetCapacityResponse(
-            available_capacity=int(get_capacity()),
+            available_capacity=int(get_capacity(storage_pool)),
         )
 
     @log_grpc_request
