@@ -72,14 +72,22 @@ class TaskManager:
 
     def retry_worker(self):
         while not self._shutting_down:
-            self.retry_all()
-            for task_id, _ in self.get_tasks(retriable=False).items():
-                self.remove_task(task_id)
-            for task_id, _ in self.get_tasks(state=TaskState.COMPLETED).items():
-                self.remove_task(task_id)
+            try:
+                self.retry_all()
+                for task_id, _ in self.get_tasks(retriable=False).items():
+                    self.remove_task(task_id)
+                for task_id, _ in self.get_tasks(state=TaskState.COMPLETED).items():
+                    self.remove_task(task_id)
+            except Exception as e:
+                # Note that this should not happen unless there's an I/O reading the
+                # task state information or if there's a logic bug in the task management/state storing
+                # since we don't run the tasks directly here
+                logger.error("TaskManager Worker encountered an error", error=e)
             time.sleep(self._retry_interval)
+        logger.info("TaskManager Worker exit after shutdown request...")
 
     def retry_all(self):
+        logger.debug("Retrying all retriable tasks", running=len(self._tasks))
         for task_id, failed_task in self.get_tasks(retriable=True).items():
             logger.debug("Retrying task", task_id=task_id, task=failed_task)
             self.remove_task(task_id)
