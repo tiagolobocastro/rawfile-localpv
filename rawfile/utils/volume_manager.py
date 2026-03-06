@@ -176,6 +176,8 @@ class VolumeManager:
         if dry_run:
             return
         snapshots = list(snapshots_dir(volume_id).glob("*"))
+        # don't count the temporary dir!
+        snapshots.remove(snapshots_dir(volume_id, temporary=True))
         temp_snapshots = list(snapshots_dir(volume_id, temporary=True).glob("*"))
         total_snapshots = len(snapshots) + len(temp_snapshots)
         meta = metadata_or(volume_id)
