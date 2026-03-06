@@ -1,11 +1,12 @@
 from concurrent.futures import Executor, Future
 from enum import StrEnum
 import shutil
-from typing import Callable, TypedDict
+from typing import Callable, TypedDict, NotRequired
 import time
 from config import config
 from utils.snapshot_manager import manager as snapshot_manager
 from utils.volume_manager import manager as volume_manager
+from datetime import datetime
 from pathlib import Path
 import json
 import hashlib
@@ -43,6 +44,11 @@ class TaskInfo(TypedDict):
     kwargs: dict
     retry_count: int
     state: TaskState
+
+    created_ts: NotRequired[datetime]  # When the task was first created
+    saved_ts: NotRequired[datetime]  # When the task was last saved
+    retry_ts: NotRequired[datetime]  # When the current retry attempt began
+    last_error: NotRequired[str]  # Last error hit by the task
 
 
 class TaskManager:
@@ -90,9 +96,9 @@ class TaskManager:
         logger.debug("Retrying all retriable tasks", running=len(self._tasks))
         for task_id, failed_task in self.get_tasks(retriable=True).items():
             logger.debug("Retrying task", task_id=task_id, task=failed_task)
-            self.remove_task(task_id)
-            self.run_task(
+            self.run_task_ext(
                 TaskName(failed_task["task"]),
+                True,
                 *failed_task["args"],
                 **failed_task["kwargs"],
             )
@@ -123,10 +129,36 @@ class TaskManager:
                         }
                 if state is not None:
                     data = {k: v for k, v in data.items() if v["state"] == state}
+                for k, v in list(data.items()):
+                    data[k] = self.decode_task(v)
                 return data
 
     def get_task(self, task_id) -> None:
-        self.get_tasks().get(task_id, None)
+        self.get_tasks().get(task_id)
+
+    def encode_task(self, task: TaskInfo) -> dict:
+        out = dict(task)
+        for key in ("created_ts", "saved_ts", "retry_ts"):
+            value = out.get(key, None)
+            if isinstance(value, datetime):
+                out[key] = value.isoformat()
+        return out
+
+    def maybe_dt(self, value: str | None) -> datetime:
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value)
+            except ValueError:
+                return None
+        return None
+
+    def decode_task(self, raw: dict) -> TaskInfo:
+        return {
+            **raw,
+            "created_ts": self.maybe_dt(raw.get("created_ts")),
+            "saved_ts": self.maybe_dt(raw.get("saved_ts")),
+            "retry_ts": self.maybe_dt(raw.get("retry_ts")),
+        }
 
     def remove_task(self, task_id: str):
         logger.debug("Removing task", task_id=task_id)
@@ -156,36 +188,62 @@ class TaskManager:
             logger.opt(exception=exc).error(
                 "Task failed", task_id=task_id, task=task_info, exception=exc
             )
+            task_info["last_error"] = str(exc)
         task_info["state"] = state
         self.save_task(task_id, task_info)
 
     def save_task(self, task_id: str, task_info: TaskInfo):
         with self._lock:
             logger.debug("Saving task", task_id=task_id, task=task_info)
+            task_info["saved_ts"] = datetime.now()
             with open(self._tasks_store_path, "r+") as tasks_file:
                 current: dict[str, TaskInfo] = json.loads(tasks_file.read() or "{}")
-                current[task_id] = task_info
+                current[task_id] = self.encode_task(task_info)
                 tasks_file.truncate(0)
                 tasks_file.seek(0)
                 json.dump(current, tasks_file)
                 os.fsync(tasks_file.fileno())
 
-    def run_task(self, task: TaskName, *args, **kwargs) -> str:
+    def run_task(
+        self,
+        task: TaskName,
+        *args,
+        **kwargs,
+    ) -> str:
+        return self.run_task_ext(task, False, *args, **kwargs)
+
+    def run_task_ext(
+        self,
+        task: TaskName,
+        retry: bool,
+        *args,
+        **kwargs,
+    ) -> str:
         logger.debug("Running task", task=task.value, args=args, kwargs=kwargs)
         if self._shutting_down:
             raise TaskManagerShuttingDown()
         task_id = self.hash_task_info(task, *args, **kwargs)
         current = self.get_task(task_id) or {}
         retry_count = current.get("retry_count", -1)
-        if current.get("state", None):
+        last_error = current.get("last_error", None)
+
+        if not retry and current.get("state", None):
+            # if it's a csi request
             return task_id
+
         info: TaskInfo = {
             "kwargs": kwargs,
             "task": task.value,
             "args": list(args),
             "retry_count": retry_count,
             "state": TaskState.PENDING,
+            "created_ts": datetime.now(),
         }
+        if retry and current.get("state", None):
+            info["retry_ts"] = datetime.now()
+            if last_error is not None:
+                info["last_error"] = last_error
+
         self.save_task(task_id, info)
         future = self._executor.submit(task_mapping[task], *args, **kwargs)
         info["state"] = TaskState.RUNNING
