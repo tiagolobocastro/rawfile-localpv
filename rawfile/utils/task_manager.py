@@ -172,9 +172,24 @@ class TaskManager:
                 os.fsync(tasks_file.fileno())
 
     def done_callback(self, task_id: str):
+        task_entry = self._tasks.pop(task_id, None)
+        if not task_entry:
+            logger.error(
+                "Task entry missing from the in-memory tasks list", task_id=task_id
+            )
+            return
+
+        task_info: TaskInfo = task_entry.get("info", {})
+        if not task_info:
+            logger.error(
+                "Task information missing from the in-memory task",
+                task_id=task_id,
+                task=task_entry,
+            )
+            return
+
         state: TaskState
-        task_info: TaskInfo = self._tasks.get(task_id, {}).get("info", {})
-        future: Future | None = self._tasks.get(task_id, {}).get("future", None)
+        future: Future | None = task_entry.get("future", None)
         if not (future and (future.exception() or future.cancelled())):
             state = TaskState.COMPLETED
             logger.success("Task Completed", task_id=task_id, task=task_info)
@@ -186,7 +201,7 @@ class TaskManager:
             )
             state = TaskState.FAILED
             logger.opt(exception=exc).error(
-                "Task failed", task_id=task_id, task=task_info, exception=exc
+                "Tasky Failed", task_id=task_id, task=task_info, exception=exc
             )
             task_info["last_error"] = str(exc)
         task_info["state"] = state
@@ -248,8 +263,8 @@ class TaskManager:
         future = self._executor.submit(task_mapping[task], *args, **kwargs)
         info["state"] = TaskState.RUNNING
         self.save_task(task_id, info)
-        future.add_done_callback(lambda _: self.done_callback(task_id))
         self._tasks[task_id] = {"future": future, "info": info}
+        future.add_done_callback(lambda _: self.done_callback(task_id))
         return task_id
 
     def shutdown(self, timeout: int):
