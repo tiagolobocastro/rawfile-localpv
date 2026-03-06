@@ -191,4 +191,6 @@ if __name__ == "__main__":
     if config.gc:
         volume_manager.gc_all_volumes(config.gc.dry_run)
     elif config.csi_driver:
+        if config.csi_driver.plugin_type == "node":
+            volume_manager.gc_all_volumes(True)
         csi_driver(config.csi_driver)
