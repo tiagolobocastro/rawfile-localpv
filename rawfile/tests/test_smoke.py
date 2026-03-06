@@ -769,7 +769,8 @@ def _(restore_pvc, restore_pod):
         stdout=True,
         tty=False,
     )
-    logger.error(f"C: {out}")
+    # todo: aren't we missing the check for correct data here!?
+    logger.info(f"cat /{pvc_name}/file => {out}")
 
 
 @when("we delete the snapshot")
