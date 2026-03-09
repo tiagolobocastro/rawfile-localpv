@@ -264,7 +264,7 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
                 "Snapshotting capabilities are disabled.",
             )
 
-        if utils.storage_pool.get_capacity() < required_space:
+        if utils.storage_pool.get_capacity(storage_pool) < required_space:
             context.abort(
                 grpc.StatusCode.RESOURCE_EXHAUSTED,
                 "Insufficient disk space (Cloning a volume requires at least 3× the volume size).",
