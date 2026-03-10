@@ -19,7 +19,7 @@ from utils.rawfile import be_absent, be_symlink, metadata, metadata_or
 from google.protobuf.wrappers_pb2 import BoolValue
 from orchestrator.k8s import node_ip_mapping, volume_to_node
 from utils.remote import get_capacity
-from utils.logs import log_grpc_request
+from utils.logs import log_grpc_request, logger
 from utils.commands import run
 from utils.rawfile import (
     AccessType,
@@ -285,6 +285,9 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
                 source_id,
             )
         start_time = time.time()
+        logger.info(
+            "Waiting for volume to be ready", name=request.name, is_ready=is_ready
+        )
         while time.time() - start_time < 30:
             is_ready = metadata_or(request.name).get("ready", False)
             if is_ready:

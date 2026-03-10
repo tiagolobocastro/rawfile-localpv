@@ -251,6 +251,7 @@ class VolumeManager:
         return [basename(dirname(meta)) for meta in metas]
 
     def gc_all_volumes(self, dry_run=True):
+        logger.info("Running Volume Metadata Garbage Collection", dry_run=dry_run)
         return [
             self.gc_if_needed(volume_id, dry_run=dry_run)
             for volume_id in self.list_all_volumes()

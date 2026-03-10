@@ -122,3 +122,4 @@ pytest.log
 report.xml
 
 rawfile/_fallocate*
+/.vscode

@@ -4,7 +4,9 @@ from typing import Any
 from datetime import datetime
 
 
-def run(cmd: str, executable: str | None = None, check=True, capture_output=True):
+def run(
+    cmd: str, executable: str | None = None, check=True, capture_output=True, log=True
+):
     start = datetime.now()
     kwargs: dict[str, Any] = {
         "check": check,
@@ -37,5 +39,6 @@ def run(cmd: str, executable: str | None = None, check=True, capture_output=True
                 "stdout": output.stdout.decode(),
             }
         )
-    logger.debug("Shell command execution", **log_ctx)
+    if log:
+        logger.debug("Shell command execution", **log_ctx)
     return output

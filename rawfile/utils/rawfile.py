@@ -140,7 +140,7 @@ def fallocate(img_file, size):
 
 
 def attached_loops(file: str) -> list[str]:
-    out = run(f"losetup -j {file}", capture_output=True).stdout.decode()
+    out = run(f"losetup -j {file}", capture_output=True, log=False).stdout.decode()
     lines = out.splitlines()
     devs = [line.split(":", 1)[0] for line in lines]
     return devs
