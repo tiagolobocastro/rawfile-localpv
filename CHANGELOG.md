@@ -28,6 +28,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.13.1] - 2026-03-11
+
+### Added ✨
+
+### Fixed 🐛
+
+- Eliminate potential race involving Volume/Snapshot creation tasks
+- Catch and log errors when retrying tasks, and try again, instead of letting exceptions propagate
+- Temporary snapshot directory is not counted as a snapshot anymore (would lead to Node Plugin to refuse to delete data/metadata directories even when PersistentVolume itself is deleted)
+- When creating volumes, reference the storage pool's capacity that's actually used instead of the default one
+
+### Changed ♻️
+
+- Always dry-run volume garbage collection on startup, for better observability
+- Stop logging "attached loopback devices" queries
+
+### Removed 🗑️
+
+### Internal 🔧
+
+Task Manager:
+ - add metadata to task information (create/save/retry timestamps, last error)
+ - store task in memory before adding done callback (fixing aforementioned race)
+
+Tests:
+ - better logging
+
+### Known Issues 🚫
+
+- ReadOnly attribute in PVC template not fully handled
+- When using thin provisioning, user must specify the format options preventing `mkfs` from discarding blocks (`-K` for xfs/btrfs, `-E nodiscard` for ext4). Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/295)
+- Prometheus metrics use capacity sum across all the pools, instead of values per pool. This may lead to confusing results. Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/294)
+- For ext4, volumes available space might be smaller than intended due to defaulting to reserve 5% of the blocks for privileged users. This can be circumvented via format options (`-m 0`)
+
+---
+
 ## [v0.13.0] - 2026-03-03 ⚠️ Breaking Changes
 
 ### Added ✨
