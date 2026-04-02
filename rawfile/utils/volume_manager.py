@@ -263,14 +263,21 @@ class VolumeManager:
             pool = meta.get("storage_pool", config.csi_driver.default_pool)
             thin_provision = meta.get("thin_provision", False)
             file = img_file(volume_id=volume_id)
+
+            try:
+                file_stats = stat(file)
+            except FileNotFoundError:
+                return None
+
             loop_devs = attached_loops(file.as_posix())
-            if not (loop_devs and len(loop_devs)):
-                return None
-            mountpoint = device_to_mountpoint(loop_devs[0])
-            if not mountpoint:
-                return None
-            filesystem_stats = statvfs(mountpoint)
-            file_stats = stat(file)
+            if loop_devs and len(loop_devs):
+                mountpoint = device_to_mountpoint(loop_devs[0])
+                if mountpoint:
+                    filesystem_stats = statvfs(mountpoint)
+                else:
+                    filesystem_stats = {"fs_usage": 0}
+            else:
+                filesystem_stats = {"fs_usage": 0}
 
             # note that "sparse" here might differ from metadata's
             # "thin_provision": if the volume was created as thick but formatted
