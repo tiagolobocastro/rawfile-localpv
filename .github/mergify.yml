@@ -9,3 +9,5 @@ queue_rules:
       - check-success = ci
 merge_queue:
   max_parallel_checks: 1
+merge_protections_settings:
+  reporting_method: check-runs
