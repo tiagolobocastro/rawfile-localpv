@@ -26,6 +26,14 @@ Don't blind upgrade to a potentially breaking version as additional steps may be
 
 We try to do our best to follow [semantic versioning](https://semver.org/), but mistakes can happen. If you encounter any unexpected breaking change from our part, please do let us know!
 
+### Upgrading to Unreleased
+
+This version introduces the following breaking changes:
+
+  - Support for `global.k8sImageRegistry` has been removed. \
+  Use `global.imageRegistry` to override all image registries. \
+  Alternatively, configure local registry values or use `csiSideCarImageRegistry` for CSI sidecar images if needed.
+
 ### Upgrading to v0.13.0
 
 This version introduces the following breaking changes:

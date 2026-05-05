@@ -1,3 +1,23 @@
+global:
+  # -- Global override for image registry
+  imageRegistry: ""
+  # -- Global override for image pull policy
+  imagePullPolicy: ""
+  # -- Global image pull secrets (merged with local imagePullSecrets and not overridden)
+  # - secret
+  imagePullSecrets: []
+  analytics:
+    # -- Global override for GA analytics
+    enabled:
+
+# -- Image registry for CSI Sidecars
+csiSideCars:
+  image:
+    # -- Image registry for csi sidecars
+    registry: "registry.k8s.io"
+    # -- Image pull policy for csi sidecars
+    pullPolicy: IfNotPresent
+
 # -- Name of the registered CSI Driver in the cluster
 provisionerName: "rawfile.csi.openebs.io"
 
@@ -17,38 +37,21 @@ auth:
   # -- If managing secrets outside the chart, use this to reference the secret name; otherwise, leave empty.
   secretName: ""
 
-global:
-  # -- Default image registry for Images from DockerHub
-  imageRegistry: docker.io
-  # -- Default image registry for Images from Kubernetes (registry.k8s.io)
-  k8sImageRegistry: registry.k8s.io
-  # -- Default pull policy for images
-  imagePullPolicy: IfNotPresent
-  # -- Default image pull secret for images
-  imagePullSecrets: []
-  analytics:
-    # -- Enable OpenEBS analytics which help track engine traction and usage.
-    enabled: true
-
 image:
-  # -- Image registry for rawfile-localpv (default is global.imageRegistry)
-  registry: ""
+  # -- Image registry for rawfile-localpv (can be overridden by global.imageRegistry)
+  registry: "docker.io"
   # -- Image repository for rawfile-localpv
   repository: openebs/rawfile-localpv
   # -- Default image tag for node and controller components (uses AppVersion if empty)
-  tag: ""
+  tag:
   # -- Default image pull policy for node and controller components
   pullPolicy: IfNotPresent
 
-controller:
-  image:
-    # -- Overrides default image repository for node component
-    repository: ""
-    # -- Overrides default image tag for node component
-    tag: ""
-    # -- Overrides default image pull policy for node component
-    pullPolicy: ""
+analytics:
+  # -- Enable OpenEBS analytics which help track engine traction and usage.
+  enabled: true
 
+controller:
   externalResizer:
     # -- Sets compute resources for external-resizer container
     resources:
@@ -60,6 +63,8 @@ controller:
       repository: sig-storage/csi-resizer
       # -- Image tag for `csi-resizer`
       tag: v1.13.2
+      # -- Image pull policy for `csi-resizer`
+      pullPolicy:
 
   # -- Sets compute resources for controller component
   resources:
@@ -91,14 +96,6 @@ controller:
   grpcWorkers: 10
 
 node:
-  image:
-    # -- Overrides default image repository for node component
-    repository: ""
-    # -- Overrides default image tag for node component
-    tag: ""
-    # -- Overrides default image pull policy for node component
-    pullPolicy: ""
-
   # -- Enables hostNetwork for node component
   hostNetwork: false
 
@@ -113,6 +110,8 @@ node:
       repository: sig-storage/csi-node-driver-registrar
       # -- Image Tag for `csi-node-driver-registrar`
       tag: v2.13.0
+      # -- Image pull policy for `csi-node-driver-registrar`
+      pullPolicy:
 
     # -- Healthcheck port for driver-registrar
     healthzPort: 9809
@@ -128,6 +127,8 @@ node:
       repository: sig-storage/csi-provisioner
       # -- Image Tag for `csi-provisioner`
       tag: v5.2.0
+      # -- Image pull policy for `csi-provisioner`
+      pullPolicy:
 
   externalSnapshotter:
     # -- Sets compute resources for external-snapshotter container
@@ -140,6 +141,8 @@ node:
       repository: sig-storage/csi-snapshotter
       # -- Image Tag for `csi-snapshotter`
       tag: v8.2.1
+      # -- Image pull policy for `csi-snapshotter`
+      pullPolicy:
 
   snapshotController:
     # -- Sets compute resources for snapshot-controller container
@@ -152,6 +155,8 @@ node:
       repository: sig-storage/snapshot-controller
       # -- Image Tag for `snapshot-controller`
       tag: v8.2.1
+      # -- Image pull policy for `snapshot-controller`
+      pullPolicy:
 
   # -- Default filesystem type for rawfile volumes (Currently supports `btrfs`, `xfs` and `ext4` [which is default])
   defaultFs: ext4

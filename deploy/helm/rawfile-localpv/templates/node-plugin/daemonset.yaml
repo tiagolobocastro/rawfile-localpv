@@ -49,8 +49,8 @@ spec:
         {{- include "rawfile-localpv.pool-volumes" . | nindent 8 }}
       containers:
         - name: csi-driver
-          image: "{{ include "rawfile-localpv.node-image" . }}"
-          imagePullPolicy: "{{ include "rawfile-localpv.node-pull-policy" . }}"
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.image "global" .Values.global "chartVersion" .Chart.AppVersion) }}
+          imagePullPolicy: {{ default .Values.image.pullPolicy .Values.global.imagePullPolicy }}
           securityContext:
             privileged: true
           env:
@@ -84,7 +84,11 @@ spec:
             - name: CSI_DRIVER__GRPC_WORKERS
               value: {{ .Values.node.grpcWorkers | toString | quote }}
             - name: GA_ENABLED
+              {{- if kindIs "bool" .Values.global.analytics.enabled }}
               value: "{{ .Values.global.analytics.enabled }}"
+              {{- else }}
+              value: "{{ .Values.analytics.enabled }}"
+              {{- end }}
             {{- if .Values.global.analytics.gaId }}
             - name: GA_ID
               value: {{ .Values.global.analytics.gaId | quote }}
@@ -174,8 +178,8 @@ spec:
           resources:
             {{- include "rawfile-localpv.controller-resources" . | nindent 12 }}
         - name: node-driver-registrar
-          image: {{ printf "%s/%s:%s" (.Values.node.driverRegistrar.image.registry | default .Values.global.k8sImageRegistry) .Values.node.driverRegistrar.image.repository .Values.node.driverRegistrar.image.tag }}
-          imagePullPolicy: IfNotPresent
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.driverRegistrar.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy | default .Values.node.driverRegistrar.image.pullPolicy | default .Values.csiSideCars.image.pullPolicy }}
           args:
             - --csi-address=$(ADDRESS)
             - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
@@ -202,8 +206,8 @@ spec:
           resources:
             {{- include "rawfile-localpv.node-driver-registrar-resources" . | nindent 12 }}
         - name: external-provisioner
-          image: {{ printf "%s/%s:%s" (.Values.node.externalProvisioner.image.registry | default .Values.global.k8sImageRegistry) .Values.node.externalProvisioner.image.repository .Values.node.externalProvisioner.image.tag }}
-          imagePullPolicy: IfNotPresent
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.externalProvisioner.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy | default .Values.node.externalProvisioner.image.pullPolicy | default .Values.csiSideCars.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
             - "--feature-gates=Topology=true"
@@ -237,8 +241,8 @@ spec:
             {{- include "rawfile-localpv.node-external-provisioner-resources" . | nindent 12 }}
         {{- if .Values.capabilities.snapshots.enabled }}
         - name: external-snapshotter
-          image: {{ printf "%s/%s:%s" (.Values.node.externalSnapshotter.image.registry | default .Values.global.k8sImageRegistry) .Values.node.externalSnapshotter.image.repository .Values.node.externalSnapshotter.image.tag }}
-          imagePullPolicy: IfNotPresent
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.externalSnapshotter.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy | default .Values.node.externalSnapshotter.image.pullPolicy | default .Values.csiSideCars.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
             - "--node-deployment=true"
@@ -263,6 +267,6 @@ spec:
             - "--enable-distributed-snapshotting=true"
           resources:
             {{- include "rawfile-localpv.node-snapshot-controller-resources" . | nindent 12 }}
-          image: {{ printf "%s/%s:%s" (.Values.node.snapshotController.image.registry | default .Values.global.k8sImageRegistry) .Values.node.snapshotController.image.repository .Values.node.snapshotController.image.tag }}
-          imagePullPolicy: IfNotPresent
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.snapshotController.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy | default .Values.node.snapshotController.image.pullPolicy | default .Values.csiSideCars.image.pullPolicy }}
         {{- end }}
