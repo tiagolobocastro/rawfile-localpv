@@ -10,12 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - YYYY-MM-DD
 
 ### Added ✨
+- Added `csiSideCars.image.registry` and `csiSideCars.image.pullPolicy` to configure CSI sidecar container images
+- Added `analytics.enabled` to enable/disable analytics locally
 
 ### Fixed 🐛
 
 ### Changed ♻️
+- `global.imageRegistry` now overrides all image registries when set
 
 ### Removed 🗑️
+- This release introduces a breaking change by removing `global.k8sImageRegistry` , `node.image` and `controller.image`
 
 ### Internal 🔧
 
