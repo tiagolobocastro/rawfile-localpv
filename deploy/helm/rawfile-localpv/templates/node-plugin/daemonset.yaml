@@ -13,6 +13,10 @@ spec:
   template:
     metadata:
       labels: *selectorLabels
+      {{- with .Values.node.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       serviceAccount: {{ include "rawfile-localpv.fullname" . }}-driver
       priorityClassName: {{ .Values.node.priorityClassName }}
