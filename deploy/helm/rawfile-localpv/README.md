@@ -90,6 +90,7 @@ Please follow the [install guide](https://github.com/openebs/rawfile-localpv/tre
 | node.metadataDirPath | string | `"/var/local/openebs/rawfile/{{ .Release.Name }}/meta"` | Metadata dir path for rawfile volumes metadata and tasks store file |
 | node.metrics.enabled | bool | `false` |  |
 | node.nodeSelector | string | `nil` | nodeSelector for node component |
+| node.podAnnotations | object | `{}` | Annotations for the node DaemonSet pods |
 | node.priorityClassName | string | `"system-node-critical"` | priorityClassName for node component since this part is critical for node `system-node-critical` is default |
 | node.resources | object | `{}` | Sets compute resources for node component |
 | node.snapshotController.image.pullPolicy | string | `nil` | Image pull policy for `snapshot-controller` |

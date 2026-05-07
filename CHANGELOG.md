@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added ✨
 - Added `csiSideCars.image.registry` and `csiSideCars.image.pullPolicy` to configure CSI sidecar container images
 - Added `analytics.enabled` to enable/disable analytics locally
+- Added `node.podAnnotations` to set custom annotations on the node DaemonSet pods
 
 ### Fixed 🐛
 

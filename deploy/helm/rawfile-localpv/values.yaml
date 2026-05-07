@@ -199,6 +199,9 @@ node:
   # -- Affinities for node component
   affinity:
 
+  # -- Annotations for the node DaemonSet pods
+  podAnnotations: {}
+
   # -- Number of gRPC workers for node component
   grpcWorkers: 10
 
