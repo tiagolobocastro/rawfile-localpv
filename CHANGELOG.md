@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `csiSideCars.image.registry` and `csiSideCars.image.pullPolicy` to configure CSI sidecar container images
 - Added `analytics.enabled` to enable/disable analytics locally
 - Added `node.podAnnotations` to set custom annotations on the node DaemonSet pods
+- Added per-storage-pool Prometheus metrics (`rawfile_pool_capacity_bytes`, `rawfile_pool_available_bytes`, `rawfile_pool_usage_bytes`, `rawfile_pool_reserved_capacity_bytes`, `rawfile_pool_remaining_capacity_bytes`, `rawfile_pool_volumes_physical_bytes`, `rawfile_pool_volumes_logical_bytes`, `rawfile_pool_volume_count`, `rawfile_pool_info`) and per-volume additions (`rawfile_volume_physical_bytes`, `rawfile_volume_info`); existing `rawfile_remaining_capacity_bytes`, `rawfile_volume_used_bytes`, and `rawfile_volume_total_bytes` are unchanged
 
 ### Fixed 🐛
 
@@ -28,7 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ReadOnly attribute in PVC template not fully handled
 - When using thin provisioning, user must specify the format options preventing `mkfs` from discarding blocks (`-K` for xfs/btrfs, `-E nodiscard` for ext4). Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/295)
-- Prometheus metrics use capacity sum across all the pools, instead of values per pool. This may lead to confusing results. Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/294)
 - For ext4, volumes available space might be smaller than intended due to defaulting to reserve 5% of the blocks for privileged users. This can be circumvented via format options (`-m 0`)
 
 ---
