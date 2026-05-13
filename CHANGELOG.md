@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `csiSideCars.image.registry` and `csiSideCars.image.pullPolicy` to configure CSI sidecar container images
 - Added `analytics.enabled` to enable/disable analytics locally
 - Added `node.podAnnotations` to set custom annotations on the node DaemonSet pods
-- Added per-storage-pool Prometheus metrics (`rawfile_pool_capacity_bytes`, `rawfile_pool_available_bytes`, `rawfile_pool_usage_bytes`, `rawfile_pool_reserved_capacity_bytes`, `rawfile_pool_remaining_capacity_bytes`, `rawfile_pool_volumes_physical_bytes`, `rawfile_pool_volumes_logical_bytes`, `rawfile_pool_volume_count`, `rawfile_pool_info`) and per-volume additions (`rawfile_volume_physical_bytes`, `rawfile_volume_info`); existing `rawfile_remaining_capacity_bytes`, `rawfile_volume_used_bytes`, and `rawfile_volume_total_bytes` are unchanged
+- Added per-storage-pool Prometheus metrics (`rawfile_pool_capacity_bytes`, `rawfile_pool_backing_fs_capacity_bytes`, `rawfile_pool_available_bytes`, `rawfile_pool_usage_bytes`, `rawfile_pool_reserved_capacity_bytes`, `rawfile_pool_remaining_capacity_bytes`, `rawfile_pool_volumes_physical_bytes`, `rawfile_pool_volumes_logical_bytes`, `rawfile_pool_volume_count`, `rawfile_pool_info`) and per-volume additions (`rawfile_volume_physical_bytes`, `rawfile_volume_info`); existing `rawfile_remaining_capacity_bytes`, `rawfile_volume_used_bytes`, and `rawfile_volume_total_bytes` are unchanged. Note: `rawfile_pool_capacity_bytes` reflects the pool's allocated capacity (`fs_size − reserved_capacity`), matching the driver's internal "capacity reserved for this pool" model; `rawfile_pool_backing_fs_capacity_bytes` exposes the raw filesystem size from statvfs.
 
 ### Fixed 🐛
 

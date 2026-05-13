@@ -41,7 +41,15 @@ class VolumeStatsCollector(object):
 
         pool_capacity = GaugeMetricFamily(
             "rawfile_pool_capacity",
-            "Total size of the filesystem backing the storage pool.",
+            "Capacity allocated to the storage pool for volume provisioning "
+            "(backing filesystem size minus reserved capacity).",
+            labels=["node", "pool"],
+            unit="bytes",
+        )
+        pool_backing_fs_capacity = GaugeMetricFamily(
+            "rawfile_pool_backing_fs_capacity",
+            "Total size of the filesystem backing the storage pool, "
+            "as reported by statvfs (fs_size).",
             labels=["node", "pool"],
             unit="bytes",
         )
@@ -151,7 +159,12 @@ class VolumeStatsCollector(object):
             reserved_bytes = reserved_capacity_handlers[pool.reserved_capacity_mode](
                 fs_stats["fs_size"], pool.reserved_capacity
             )
-            pool_capacity.add_metric([self.node, pool_name], fs_stats["fs_size"])
+            pool_capacity.add_metric(
+                [self.node, pool_name], fs_stats["fs_size"] - reserved_bytes
+            )
+            pool_backing_fs_capacity.add_metric(
+                [self.node, pool_name], fs_stats["fs_size"]
+            )
             pool_available.add_metric([self.node, pool_name], fs_stats["fs_avail"])
             pool_usage.add_metric([self.node, pool_name], fs_stats["fs_usage"])
             pool_reserved.add_metric([self.node, pool_name], reserved_bytes)
@@ -180,6 +193,7 @@ class VolumeStatsCollector(object):
         return [
             remaining_capacity,
             pool_capacity,
+            pool_backing_fs_capacity,
             pool_available,
             pool_usage,
             pool_reserved,
