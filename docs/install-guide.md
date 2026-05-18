@@ -26,7 +26,7 @@ Don't blind upgrade to a potentially breaking version as additional steps may be
 
 We try to do our best to follow [semantic versioning](https://semver.org/), but mistakes can happen. If you encounter any unexpected breaking change from our part, please do let us know!
 
-### Upgrading to Unreleased
+### Upgrading to v0.14.0
 
 This version introduces the following breaking changes:
 

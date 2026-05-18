@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - YYYY-MM-DD
 
 ### Added ✨
+
+### Fixed 🐛
+
+### Changed ♻️
+
+### Removed 🗑️
+
+### Internal 🔧
+
+### Known Issues 🚫
+
+- ReadOnly attribute in PVC template not fully handled
+- When using thin provisioning, user must specify the format options preventing `mkfs` from discarding blocks (`-K` for xfs/btrfs, `-E nodiscard` for ext4). Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/295)
+- For ext4, volumes available space might be smaller than intended due to defaulting to reserve 5% of the blocks for privileged users. This can be circumvented via format options (`-m 0`)
+
+---
+
+## [v0.14.0] - 2026-05-19
+
+### Added ✨
 - Added `csiSideCars.image.registry` and `csiSideCars.image.pullPolicy` to configure CSI sidecar container images
 - Added `analytics.enabled` to enable/disable analytics locally
 - Added `node.podAnnotations` to set custom annotations on the node DaemonSet pods

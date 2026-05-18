@@ -39,7 +39,7 @@ class VolumeStats(TypedDict):
     used: int
     pool: str
     thin_provision: bool
-    thin: bool
+    sparse: bool
 
 
 class VolumeManager:
