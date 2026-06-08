@@ -71,7 +71,7 @@ class TaskManager:
                 task_id=task_id,
                 task=task,
             )
-            if task["retry_count"] > 0:
+            if task.get("retry_count", self._max_retry + 1) > 0:
                 task["retry_count"] -= 1
             self.save_task(task_id, task)
         self._executor.submit(self.retry_worker)
@@ -118,14 +118,15 @@ class TaskManager:
                         data = {
                             k: v
                             for k, v in data.items()
-                            if v["retry_count"] < self._max_retry
+                            if v.get("retry_count", -1) < self._max_retry
                             and v["state"] == TaskState.FAILED
                         }
                     else:
                         data = {
                             k: v
                             for k, v in data.items()
-                            if v["retry_count"] >= self._max_retry
+                            if v.get("retry_count", self._max_retry + 1)
+                            >= self._max_retry
                         }
                 if state is not None:
                     data = {k: v for k, v in data.items() if v["state"] == state}

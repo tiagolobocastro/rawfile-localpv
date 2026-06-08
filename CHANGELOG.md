@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed 🐛
 
+- When Task Manager would read tasks without "retry_count" key present, it'd throw a `KeyError` exception. Add defaults when "retry_count" key is read.
+
 ### Changed ♻️
 
 ### Removed 🗑️
