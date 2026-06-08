@@ -53,15 +53,21 @@ class VolumeStatsCollector(object):
             labels=["node", "pool"],
             unit="bytes",
         )
-        pool_available = GaugeMetricFamily(
-            "rawfile_pool_available",
-            "Available space on the filesystem backing the storage pool, as reported by statvfs.",
+        pool_backing_fs_available = GaugeMetricFamily(
+            "rawfile_pool_backing_fs_available",
+            "Available space on the filesystem backing the storage pool, "
+            "as reported by statvfs (fs_avail). Counts free space across the "
+            "whole backing FS, including the rawfile-reserved slice; not just "
+            "what rawfile is allowed to use.",
             labels=["node", "pool"],
             unit="bytes",
         )
-        pool_usage = GaugeMetricFamily(
-            "rawfile_pool_usage",
-            "Used space on the filesystem backing the storage pool, as reported by statvfs.",
+        pool_backing_fs_usage = GaugeMetricFamily(
+            "rawfile_pool_backing_fs_usage",
+            "Used space on the filesystem backing the storage pool, "
+            "as reported by statvfs (fs_size - fs_avail). Counts everything "
+            "on the backing FS (rawfile-managed volumes plus non-rawfile "
+            "tenants like kubelet ephemeral storage and container logs).",
             labels=["node", "pool"],
             unit="bytes",
         )
@@ -165,8 +171,12 @@ class VolumeStatsCollector(object):
             pool_backing_fs_capacity.add_metric(
                 [self.node, pool_name], fs_stats["fs_size"]
             )
-            pool_available.add_metric([self.node, pool_name], fs_stats["fs_avail"])
-            pool_usage.add_metric([self.node, pool_name], fs_stats["fs_usage"])
+            pool_backing_fs_available.add_metric(
+                [self.node, pool_name], fs_stats["fs_avail"]
+            )
+            pool_backing_fs_usage.add_metric(
+                [self.node, pool_name], fs_stats["fs_usage"]
+            )
             pool_reserved.add_metric([self.node, pool_name], reserved_bytes)
             pool_remaining.add_metric([self.node, pool_name], get_capacity(pool_name))
             pool_info.add_metric(
@@ -194,8 +204,8 @@ class VolumeStatsCollector(object):
             remaining_capacity,
             pool_capacity,
             pool_backing_fs_capacity,
-            pool_available,
-            pool_usage,
+            pool_backing_fs_available,
+            pool_backing_fs_usage,
             pool_reserved,
             pool_remaining,
             pool_volumes_physical,

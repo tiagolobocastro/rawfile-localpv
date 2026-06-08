@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - YYYY-MM-DD
 
 ### Added ✨
+- Added `rawfile_pool_backing_fs_available_bytes` and `rawfile_pool_backing_fs_usage_bytes` metrics, exposing `statvfs(fs_avail)` and `statvfs(fs_size - fs_avail)` for the storage pool's backing filesystem. Replace the (v0.14.0) `rawfile_pool_available_bytes` / `rawfile_pool_usage_bytes`. The rename completes the `rawfile_pool_backing_fs_*` naming convention introduced in v0.14.0 with `rawfile_pool_backing_fs_capacity_bytes`: any metric measuring the whole backing filesystem (not just the rawfile-allocated slice) carries the `_backing_fs_` infix, so a single look at a metric name tells you whether it's pool-scoped or backing-FS-scoped.
 
 ### Fixed 🐛
 
@@ -17,7 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed ♻️
 
-### Removed 🗑️
+### Removed 🗑️ ⚠️
+- ⚠️ Removed `rawfile_pool_available_bytes` and `rawfile_pool_usage_bytes`. They were introduced in v0.14.0 with an inconsistent name (used the `rawfile_pool_*` prefix despite measuring the **backing filesystem** including non-rawfile tenants). Use the equivalently-valued replacements:
+  ```
+  rawfile_pool_available_bytes  →  rawfile_pool_backing_fs_available_bytes
+  rawfile_pool_usage_bytes      →  rawfile_pool_backing_fs_usage_bytes
+  ```
+  Anyone using these in dashboards or alerts will need to do a metric-name find/replace.
 
 ### Internal 🔧
 
