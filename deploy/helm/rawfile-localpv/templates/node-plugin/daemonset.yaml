@@ -229,6 +229,7 @@ spec:
             - "--capacity-ownerref-level=1" # DaemonSet
             - "--node-deployment=true"
             - "--extra-create-metadata=true"
+            - "--capacity-poll-interval={{ .Values.node.externalProvisioner.capacityPollInterval }}"
           env:
             - name: ADDRESS
               value: /csi/csi.sock

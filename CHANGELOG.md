@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added ✨
 - Added `rawfile_pool_backing_fs_available_bytes` and `rawfile_pool_backing_fs_usage_bytes` metrics, exposing `statvfs(fs_avail)` and `statvfs(fs_size - fs_avail)` for the storage pool's backing filesystem. Replace the (v0.14.0) `rawfile_pool_available_bytes` / `rawfile_pool_usage_bytes`. The rename completes the `rawfile_pool_backing_fs_*` naming convention introduced in v0.14.0 with `rawfile_pool_backing_fs_capacity_bytes`: any metric measuring the whole backing filesystem (not just the rawfile-allocated slice) carries the `_backing_fs_` infix, so a single look at a metric name tells you whether it's pool-scoped or backing-FS-scoped.
 
+- Helm chart:
+  - Add `capacityPollInterval` parameter for external-provisioner, determining how long the external-provisioner waits before checking for storage capacity changes.
+
 ### Fixed 🐛
 
 - When Task Manager would read tasks without "retry_count" key present, it'd throw a `KeyError` exception. Add defaults when "retry_count" key is read.

@@ -129,6 +129,8 @@ node:
       tag: v5.2.0
       # -- Image pull policy for `csi-provisioner`
       pullPolicy:
+    # -- Sets capacity poll interval for `csi-provisioner`, determining how long the external-provisioner waits before checking for storage capacity changes.
+    capacityPollInterval: "1m"
 
   externalSnapshotter:
     # -- Sets compute resources for external-snapshotter container
