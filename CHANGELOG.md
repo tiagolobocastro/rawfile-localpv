@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - YYYY-MM-DD
 
 ### Added ✨
+
+### Fixed 🐛
+
+### Changed ♻️
+
+### Removed 🗑️ ⚠️
+
+### Internal 🔧
+
+### Known Issues 🚫
+
+- ReadOnly attribute in PVC template not fully handled
+- When using thin provisioning, user must specify the format options preventing `mkfs` from discarding blocks (`-K` for xfs/btrfs, `-E nodiscard` for ext4). Also see this [issue](https://github.com/openebs/rawfile-localpv/issues/295)
+- For ext4, volumes available space might be smaller than intended due to defaulting to reserve 5% of the blocks for privileged users. This can be circumvented via format options (`-m 0`)
+
+---
+
+## [v0.14.1] - 2026-06-10
+
+### Added ✨
 - Added `rawfile_pool_backing_fs_available_bytes` and `rawfile_pool_backing_fs_usage_bytes` metrics, exposing `statvfs(fs_avail)` and `statvfs(fs_size - fs_avail)` for the storage pool's backing filesystem. Replace the (v0.14.0) `rawfile_pool_available_bytes` / `rawfile_pool_usage_bytes`. The rename completes the `rawfile_pool_backing_fs_*` naming convention introduced in v0.14.0 with `rawfile_pool_backing_fs_capacity_bytes`: any metric measuring the whole backing filesystem (not just the rawfile-allocated slice) carries the `_backing_fs_` infix, so a single look at a metric name tells you whether it's pool-scoped or backing-FS-scoped.
 
 - Helm chart:
@@ -18,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed 🐛
 
 - When Task Manager would read tasks without "retry_count" key present, it'd throw a `KeyError` exception. Add defaults when "retry_count" key is read.
+
+- Helm chart:
+  - Quote image names templated values so special characters do not break the resulting YAML.
 
 ### Changed ♻️
 
