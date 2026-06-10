@@ -26,6 +26,19 @@ Don't blind upgrade to a potentially breaking version as additional steps may be
 
 We try to do our best to follow [semantic versioning](https://semver.org/), but mistakes can happen. If you encounter any unexpected breaking change from our part, please do let us know!
 
+### Upgrading to v0.14.1
+
+This version introduces the following breaking changes:
+
+- ⚠️ Removed `rawfile_pool_available_bytes` and `rawfile_pool_usage_bytes`. They were introduced in v0.14.0 with an inconsistent name (used the `rawfile_pool_*` prefix despite measuring the **backing filesystem** including non-rawfile tenants). Use the equivalently-valued replacements:
+  ```
+  rawfile_pool_available_bytes  →  rawfile_pool_backing_fs_available_bytes
+  rawfile_pool_usage_bytes      →  rawfile_pool_backing_fs_usage_bytes
+  ```
+  Anyone using these in dashboards or alerts will need to do a metric-name find/replace.
+
+We believe these changes, despite being technically breaking, are small enough to not warrant minor version bump.
+
 ### Upgrading to v0.14.0
 
 This version introduces the following breaking changes:
