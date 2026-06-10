@@ -27,7 +27,7 @@ spec:
           emptyDir: {}
       containers:
         - name: csi-driver
-          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.image "global" .Values.global "chartVersion" .Chart.AppVersion) }}
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.image "global" .Values.global "chartVersion" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ default .Values.image.pullPolicy .Values.global.imagePullPolicy }}
           args:
             - csi-driver
@@ -101,7 +101,7 @@ spec:
           resources:
             {{- include "rawfile-localpv.controller-resources" . | nindent 12 }}
         - name: external-resizer
-          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.controller.externalResizer.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) }}
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.controller.externalResizer.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy | default .Values.controller.externalResizer.image.pullPolicy | default .Values.csiSideCars.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"

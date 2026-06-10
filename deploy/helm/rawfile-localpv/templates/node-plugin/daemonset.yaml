@@ -53,7 +53,7 @@ spec:
         {{- include "rawfile-localpv.pool-volumes" . | nindent 8 }}
       containers:
         - name: csi-driver
-          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.image "global" .Values.global "chartVersion" .Chart.AppVersion) }}
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.image "global" .Values.global "chartVersion" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ default .Values.image.pullPolicy .Values.global.imagePullPolicy }}
           securityContext:
             privileged: true
@@ -188,7 +188,7 @@ spec:
           resources:
             {{- include "rawfile-localpv.controller-resources" . | nindent 12 }}
         - name: node-driver-registrar
-          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.driverRegistrar.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) }}
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.driverRegistrar.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy | default .Values.node.driverRegistrar.image.pullPolicy | default .Values.csiSideCars.image.pullPolicy }}
           args:
             - --csi-address=$(ADDRESS)
@@ -216,7 +216,7 @@ spec:
           resources:
             {{- include "rawfile-localpv.node-driver-registrar-resources" . | nindent 12 }}
         - name: external-provisioner
-          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.externalProvisioner.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) }}
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.externalProvisioner.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy | default .Values.node.externalProvisioner.image.pullPolicy | default .Values.csiSideCars.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
@@ -252,7 +252,7 @@ spec:
             {{- include "rawfile-localpv.node-external-provisioner-resources" . | nindent 12 }}
         {{- if .Values.capabilities.snapshots.enabled }}
         - name: external-snapshotter
-          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.externalSnapshotter.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) }}
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.externalSnapshotter.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy | default .Values.node.externalSnapshotter.image.pullPolicy | default .Values.csiSideCars.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
@@ -278,6 +278,6 @@ spec:
             - "--enable-distributed-snapshotting=true"
           resources:
             {{- include "rawfile-localpv.node-snapshot-controller-resources" . | nindent 12 }}
-          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.snapshotController.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) }}
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.node.snapshotController.image "csiSideCars" .Values.csiSideCars.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy | default .Values.node.snapshotController.image.pullPolicy | default .Values.csiSideCars.image.pullPolicy }}
         {{- end }}
