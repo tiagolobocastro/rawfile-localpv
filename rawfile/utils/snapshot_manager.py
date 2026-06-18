@@ -1,7 +1,8 @@
-from os import fsync
+import os
 from pathlib import Path
 import time
 from dataclasses import dataclass
+import consts
 from utils.commands import run
 from config import config
 from utils.errors import FsFreezeNotSupportedOnBlockVolumes, SnapshotCreateVolumeInUse
@@ -9,8 +10,8 @@ from utils.lock import VolLock
 from utils.rawfile import (
     attached_loops,
     img_file,
+    is_cow_supported,
     metadata,
-    patch_metadata,
     snapshots_dir,
 )
 from glob import glob
@@ -72,15 +73,6 @@ class SnapshotManager:
 
                 creation_time = time.time()
                 Path(f"{snap_path}.creating").unlink(missing_ok=True)
-                meta = metadata(volume_id)
-                reflink_attached = list(set(meta.get("reflink_attached", [])))
-                if copy_on_write:
-                    reflink_attached.append(name)
-                patch_metadata(
-                    volume_id,
-                    meta.get("storage_pool", config.csi_driver.default_pool),
-                    {"reflink_attached": reflink_attached},
-                )
                 return Snapshot(
                     name=name,
                     volume_id=volume_id,
@@ -110,30 +102,26 @@ class SnapshotManager:
                 Path(f"{snap_path}.creating"),
             ):
                 path.unlink(missing_ok=True)
-            meta = metadata(volume_id)
-            reflink_attached = list(set(meta.get("reflink_attached", [])))
-            if name in reflink_attached:
-                reflink_attached.remove(name)
-                patch_metadata(
-                    volume_id,
-                    meta["storage_pool"],
-                    {"reflink_attached": reflink_attached},
-                )
 
     def restore_snapshot(
         self, volume_id: str, name: str, destination: Path, temporary: bool = False
     ):
         """Restore a snapshot"""
-        chunk_size = 1024 * 1024
+        volume_meta = metadata(volume_id)
         snap_path = self._get_snapshot_path(volume_id, name, temporary)
-        with open(snap_path, "rb") as src, open(destination, "wb") as dst:
-            while True:
-                buf = src.read(chunk_size)
-                if not buf:
-                    break
-                dst.write(buf)
-            dst.flush()
-            fsync(dst.fileno())
+        copy_on_write_param = volume_meta.get("copy_on_write", None)
+        copy_on_write = (
+            copy_on_write_param
+            if copy_on_write_param is not None
+            else consts.COW_SUPPORT_MAP.get(
+                volume_meta.get("storage_pool", None), False
+            )
+        ) and is_cow_supported(Path(os.path.dirname(snap_path)), destination)
+        reflink = "always" if copy_on_write else "never"
+        cmd = (
+            f"cp --sparse=auto --reflink={reflink} {snap_path} {destination.as_posix()}"
+        )
+        run(cmd, check=True)
 
     def list_snapshots(
         self,

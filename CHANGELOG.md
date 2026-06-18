@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed ♻️
 
+- Uses CoW when it's enabled and supported between source and destination on snapshot restore
+
 ### Removed 🗑️ ⚠️
 
 ### Internal 🔧
