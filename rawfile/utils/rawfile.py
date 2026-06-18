@@ -103,7 +103,7 @@ def update_permissions(volume_id: str, storage_pool: str) -> None:
     if not _img_dir.exists():
         return
     _img_dir.chmod(D_PERMS)
-    ## set permissions recursively on all files and dirs under the volume path
+    # set permissions recursively on all files and dirs under the volume path
     # we go 3 levels deep to cover most cases (img file, snapshots, temp snapshots, etc.)
     for each in chain(
         _img_dir.glob("**/*"), _img_dir.glob("**/**/*"), _img_dir.glob("**/**/**/*")
@@ -217,7 +217,7 @@ def be_symlink(path, to):
     path.symlink_to(to)
 
 
-def is_cow_supported(dir: Path) -> bool:
+def is_cow_supported(source_dir: Path, destination_dir: Path) -> bool:
     """Check if the filesystem at the given directory supports copy-on-write (COW) operations.
 
     This function attempts to create a temporary file in the specified directory,
@@ -230,11 +230,11 @@ def is_cow_supported(dir: Path) -> bool:
     Returns:
         bool: True if COW is supported, False otherwise.
     """
-    test_file = dir / ".cow_test_file"
-    clone_file = dir / ".cow_test_clone"
+    test_file = source_dir / ".cow_test_file"
+    clone_file = destination_dir / ".cow_test_clone"
     try:
         with open(test_file, "wb") as f:
-            f.write(b"test")
+            f.write(b"COW Support Test")
             f.flush()
             os.fsync(f.fileno())
         run(f"cp --reflink=always {test_file} {clone_file}")

@@ -1,7 +1,7 @@
 import sys
 from typing import Final
 
-LATEST_SCHEMA_VERSION: Final[int] = 6
+LATEST_SCHEMA_VERSION: Final[int] = 7
 
 
 def migrate_0_to_1(data: dict) -> dict:
@@ -41,6 +41,12 @@ def migrate_5_to_6(data: dict) -> dict:
 
     data["schema_version"] = 6
     data["storage_pool"] = config.csi_driver.default_pool
+    return data
+
+
+def migrate_6_to_7(data: dict) -> dict:
+    data["schema_version"] = 7
+    data.pop("reflink_attached", None)
     return data
 
 

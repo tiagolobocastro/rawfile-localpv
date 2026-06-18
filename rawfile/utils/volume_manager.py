@@ -181,16 +181,9 @@ class VolumeManager:
         temp_snapshots = list(snapshots_dir(volume_id, temporary=True).glob("*"))
         total_snapshots = len(snapshots) + len(temp_snapshots)
         meta = metadata_or(volume_id)
-        if len(meta.get("reflink_attached", [])) > 0:
+        if total_snapshots > 0:
             logger.warning(
-                "Volume has COW Snapshots attached, skipping destroy, will be destoyed when all snapshots are removed",
-                volume_id=volume_id,
-                snapshots=total_snapshots,
-            )
-            return
-        elif total_snapshots > 0:
-            logger.warning(
-                "Volume has Snapshots(without COW) attached, will only remove volume data",
+                "Volume has Snapshots attached, will only remove volume data",
                 volume_id=volume_id,
                 snapshots=total_snapshots,
             )

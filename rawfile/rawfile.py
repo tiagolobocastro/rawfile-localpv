@@ -60,7 +60,7 @@ def node_driver_preflight_checks(task_manager: task_manager.TaskManager):
     volume_manager.migrate_all_volume_schemas()
     task_manager.migrate_tasks_file_path()
     consts.COW_SUPPORT_MAP = {
-        name: is_cow_supported(pool.path)
+        name: is_cow_supported(pool.path, pool.path)
         for name, pool in config.csi_driver.storage_pools.items()
     }
 
