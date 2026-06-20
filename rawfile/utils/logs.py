@@ -108,57 +108,64 @@ def init(_format: LoggingFormats, _level: str):
     logger.add(**_logging_handlers[format], level=level)
 
 
-def log_grpc_request(func):
-    @functools.wraps(func)
-    def wrap(self, request, context):
-        start = datetime.now()
-        is_json = format == LoggingFormats.JSON
-        args = {
-            "handler": func.__name__,
-            "starttime": start,
-        }
-        res = None
-        try:
-            res = func(self, request, context)
-            end = datetime.now()
-            args.update(
-                {
-                    "latency": end - start,
-                    "endtime": end,
-                    "success": True,
-                }
-            )
-            logger.success("GRPC Server Access Log", **args)
-            return res
-        except Exception as exc:
-            end = datetime.now()
-            args.update(
-                {
-                    "response": (MessageToDict(res) if is_json else res)
-                    if res
-                    else res,
-                    "request": MessageToDict(request) if is_json else request,
-                    "latency": end - start,
-                    "endtime": end,
-                    "success": False,
-                    "state": {
-                        "code": {
-                            "name": context._state.code.name,
-                            "value": context._state.code.value[0],
-                            "description": context._state.code.value[1],
-                        }
-                        if context._state.code
-                        else None,
-                        "details": context._state.details.decode()
-                        if context._state.details
-                        else None,
-                    },
-                }
-            )
-            logger.exception("GRPC Server Exception", **args)
-            raise exc
+class GRPCLogger(object):
+    def __init__(self, server_name: str) -> None:
+        self._server_name = server_name
 
-    return wrap
+    def __call__(self, func):
+        _server_name = self._server_name
+
+        @functools.wraps(func)
+        def wrap(self, request, context):
+            start = datetime.now()
+            is_json = format == LoggingFormats.JSON
+            args = {
+                "server_name": _server_name,
+                "handler": func.__name__,
+                "starttime": start,
+            }
+            res = None
+            try:
+                res = func(self, request, context)
+                end = datetime.now()
+                args.update(
+                    {
+                        "latency": end - start,
+                        "endtime": end,
+                        "success": True,
+                    }
+                )
+                logger.success("GRPC Server Access Log", **args)
+                return res
+            except Exception as exc:
+                end = datetime.now()
+                args.update(
+                    {
+                        "response": (MessageToDict(res) if is_json else res)
+                        if res
+                        else res,
+                        "request": MessageToDict(request) if is_json else request,
+                        "latency": end - start,
+                        "endtime": end,
+                        "success": False,
+                        "state": {
+                            "code": {
+                                "name": context._state.code.name,
+                                "value": context._state.code.value[0],
+                                "description": context._state.code.value[1],
+                            }
+                            if context._state.code
+                            else None,
+                            "details": context._state.details.decode()
+                            if context._state.details
+                            else None,
+                        },
+                    }
+                )
+                logger.exception("GRPC Server Exception", **args)
+                raise exc
+
+        return wrap
 
 
-__all__ = ["log_grpc_request", "logger", "init", "format"]
+__all__ = ["GRPCLogger", "logger", "init", "format"]

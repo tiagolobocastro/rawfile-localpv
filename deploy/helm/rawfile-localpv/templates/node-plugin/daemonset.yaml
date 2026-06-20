@@ -112,14 +112,14 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: status.podIP
-            - name: CSI_DRIVER__INTERNAL_PORT
+            - name: INTERNAL_PORT
               value: {{ .Values.node.internalGRPC.port | toString | quote }}
             - name: CSI_DRIVER__INTERNAL_GRPC_WORKERS
               value: {{ .Values.node.internalGRPC.workers | toString | quote }}
-            - name: CSI_DRIVER__NODE_DS
+            - name: NODE_DS
               value: {{ include "rawfile-localpv.fullname" . }}-node
             {{- if .Values.auth.enabled }}
-            - name: CSI_DRIVER__INTERNAL_SIGNATURE
+            - name: INTERNAL_SIGNATURE
               valueFrom:
                 secretKeyRef:
                   {{- if .Values.auth.secretName }}

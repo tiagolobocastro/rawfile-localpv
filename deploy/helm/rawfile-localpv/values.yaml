@@ -54,8 +54,7 @@ analytics:
 controller:
   externalResizer:
     # -- Sets compute resources for external-resizer container
-    resources:
-      {}
+    resources: {}
     image:
       # -- Image registry for `csi-resizer`
       registry: ""
@@ -101,8 +100,7 @@ node:
 
   driverRegistrar:
     # -- Sets compute resources for driver-registrar container
-    resources:
-      {}
+    resources: {}
     image:
       # -- Image Registry for `csi-node-driver-registrar`
       registry: ""
@@ -118,8 +116,7 @@ node:
 
   externalProvisioner:
     # -- Sets compute resources for external-provisioner container
-    resources:
-      {}
+    resources: {}
     image:
       # -- Image Registry for `csi-provisioner`
       registry: ""
@@ -134,8 +131,7 @@ node:
 
   externalSnapshotter:
     # -- Sets compute resources for external-snapshotter container
-    resources:
-      {}
+    resources: {}
     image:
       # -- Image Registry for `csi-snapshotter`
       registry: ""
@@ -148,8 +144,7 @@ node:
 
   snapshotController:
     # -- Sets compute resources for snapshot-controller container
-    resources:
-      {}
+    resources: {}
     image:
       # -- Image Registry for `snapshot-controller`
       registry: ""
@@ -184,8 +179,7 @@ node:
   kubeletPath: /var/lib/kubelet
 
   # -- Sets compute resources for node component
-  resources:
-    {}
+  resources: {}
   metrics:
     enabled: false
 
@@ -278,5 +272,8 @@ capabilities:
     # -- Sets whether taking volume snapshots is enabled. Required for volume cloning. Runs externalSnapshotter and snapshotController containers.
     enabled: true
   resize:
-    # -- Sets whether volume resizing is enabled. If disabled, don't deploy controller statefulset
+    # -- Sets whether volume resizing is enabled. If disabled, don't deploy controller component
+    enabled: true
+  apiServer:
+    # -- Sets whether API Server has been enabled or not
     enabled: true

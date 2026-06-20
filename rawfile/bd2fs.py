@@ -30,7 +30,7 @@ from utils.rawfile import (
     metadata_or,
 )
 from google.protobuf.timestamp_pb2 import Timestamp
-from utils.logs import log_grpc_request
+from utils.logs import GRPCLogger
 from filesystem import get_from_device_or_fallback, from_device
 from filesystem.utils import get_device_for_mountpoint
 from rawfile_servicer import check_access_type, get_access_type
@@ -44,6 +44,8 @@ from utils.task_manager import TaskManager
 from utils.snapshot_manager import manager as snapshot_manager
 from utils.volume_manager import manager as volume_manager
 import consts
+
+log_grpc_request = GRPCLogger(server_name="Bd2FS")
 
 
 class Bd2FsIdentityServicer(csi_pb2_grpc.IdentityServicer):

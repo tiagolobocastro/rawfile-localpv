@@ -1,10 +1,8 @@
-import ipaddress
 from pathlib import Path
 import time
 
 import grpc
 from config import config
-from internal_svc import SIGNATURE_METADATA
 from utils.errors import VolumeInUseError, VolumeNotReadyError
 import utils.rawfile
 from consts import (
@@ -13,13 +11,13 @@ from consts import (
     PROVISIONER_VERSION,
     CSI_K8S_PVC_NAME_KEY,
 )
-from internal import internal_pb2, internal_pb2_grpc
+from internal import internal_pb2
 from csi import csi_pb2, csi_pb2_grpc
 from utils.rawfile import be_absent, be_symlink, metadata, metadata_or
 from google.protobuf.wrappers_pb2 import BoolValue
 from orchestrator.k8s import node_ip_mapping, volume_to_node
 from utils.remote import get_capacity
-from utils.logs import log_grpc_request, logger
+from utils.logs import GRPCLogger, logger
 from utils.commands import run
 from utils.rawfile import (
     AccessType,
@@ -32,8 +30,11 @@ from utils.units import normalize_parameters, str_to_bool
 from analytics.ga4 import send_event, Usage
 from utils.volume_manager import VolumeSource, manager as volume_manager
 import utils.storage_pool
+from utils.remote import get_internal_grpc_stub, internal_auth_metadata
+
 
 NODE_NAME_TOPOLOGY_KEY = "hostname"
+log_grpc_request = GRPCLogger(server_name="rawfile-servicer")
 
 
 def get_access_type(request):
@@ -355,17 +356,10 @@ class RawFileControllerServicer(csi_pb2_grpc.ControllerServicer):
         size = request.capacity_range.required_bytes
 
         node_ip_str = node_ip_mapping.get_node_ip(node_name)
-        metadata = [(SIGNATURE_METADATA, config.csi_driver.internal_signature)]
-        node_ip = ipaddress.ip_address(node_ip_str)
-        if node_ip.version == 6:
-            node_ip_str = f"[{node_ip_str}]"
-        channel = grpc.insecure_channel(
-            f"{node_ip_str}:{config.csi_driver.internal_port}"
-        )
-        stub = internal_pb2_grpc.InternalStub(channel)
+        stub = get_internal_grpc_stub(node_ip_str)
         response = stub.ExpandRawFile(
             internal_pb2.ExpandRawFileRequest(volume_id=volume_id, new_size=size),
-            metadata=metadata,
+            metadata=[internal_auth_metadata()],
             timeout=15,
         )
 
