@@ -275,7 +275,7 @@ class VolumeManager:
             # note that "sparse" here might differ from metadata's
             # "thin_provision": if the volume was created as thick but formatted
             # with discarding, it's factually thin i.e. sparse
-            result = {
+            return {
                 "physical_size": file_stats["physical_size"],
                 "logical_size": file_stats["logical_size"],
                 "used": filesystem_stats["fs_usage"],
@@ -284,7 +284,6 @@ class VolumeManager:
                 or thin_provision,
                 "thin_provision": thin_provision,
             }
-            return result
         except (FileNotFoundError, KeyError):
             return None
 

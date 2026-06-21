@@ -7,6 +7,12 @@ service Internal {
   rpc ExpandRawFile (ExpandRawFileRequest) returns (ExpandRawFileResponse);
   // Downloads raw file data and metadata.
   rpc GetRawFile (GetRawFileRequest) returns (GetRawFileResponse);
+  // Gets stats of pools in the node
+  rpc GetPoolsStats (GetPoolsStatsRequest) returns (GetPoolsStatsResponse);
+  // Gets stats of the volumes for a pool
+  rpc GetVolumesStat (GetVolumesStatRequest) returns (GetVolumesStatResponse);
+  // Get List of tasks with status
+  rpc GetNodeTasks(GetNodeTasksRequest) returns (GetNodeTasksResponse);
 }
 
 message ExpandRawFileRequest {
@@ -43,4 +49,87 @@ message GetRawFileResponse {
   map<string, google.protobuf.Any> metadata = 1;
   // Rawfile data. Present only if with_data was true in the request.
   bytes data = 2;
+}
+
+message GetPoolsStatsRequest {
+}
+
+message PoolStat {
+  // Reserved capacity of the Pool
+  string reserved_capacity = 1;
+  // Pool path
+  string path = 2;
+  // How we handle reserved_capacity
+  string reserved_capacity_mode = 3;
+  // Current capacity of the pool
+  int64 capacity = 4;
+  // Copy On Write Enabled?
+  bool copy_on_write_supported = 5;
+}
+
+message GetPoolsStatsResponse {
+  // Stat data, pool name is key and Stat data is value
+  map<string, PoolStat> stats = 1;
+}
+
+message VolumeStat {
+  // Name of the volume
+  string name = 1;
+  // Size of the volume (In bytes)
+  int64 size = 2;
+  // Copy on Write will be used or not?
+  bool copy_on_write = 3;
+  // Is the Volume Thin?
+  bool thin_provision = 4;
+  // Is the volume Ready?
+  bool ready = 5;
+  // Indicates that if volume has been deleted or not (with it's time in timestamp)
+  float deleted_at = 6;
+  // Volume create time (with it's time in timestamp)
+  float created_at = 7;
+  // Indicates when volume should get Garbage Collected (with it's time in timestamp)
+  float gc_at = 8;
+  // Name of the pool that volume has been stored on
+  string storage_pool = 9;
+  // Indicates that if freezefs has been enabled or not
+  bool freezefs = 10;
+  // Name of the backing imgfile of the volume
+  string img_file = 11;
+  // Physical size of the volume
+  int64 physical_size = 12;
+  // Logical size of the volume
+  int64 logical_size = 13;
+  // How many bytes in use
+  int64 used = 14;
+}
+
+message GetVolumesStatRequest {
+  // Name of the pool to get stats of that volumes
+  string pool_name = 1;
+}
+
+message GetVolumesStatResponse {
+  // Stat data, volume name is key and Stat data is value
+  map<string, VolumeStat> stats = 1;
+}
+
+message GetNodeTasksRequest {
+}
+
+message Task {
+  // Name of the task (e.g. CreateSnapshot)
+  string task = 1;
+  // List of arguments that are provided for running the task
+  repeated string args = 2;
+  // List of Keyword args provided for tasks
+  map<string, google.protobuf.Any> kwargs = 3;
+  // How many times we have retried
+  int64 retry_count = 4;
+  // State of the task
+  string state = 5;
+}
+
+message GetNodeTasksResponse {
+  // map of task IDs with their state
+  map<string, Task> tasks = 1;
 }

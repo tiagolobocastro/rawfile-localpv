@@ -1,12 +1,23 @@
+import json
 import re
 import warnings
-import consts
-import json
-
-from filesystem.types import FileSystemName
-from typing import Annotated, Final, Literal
 from datetime import timedelta
+from typing import Annotated, Final, Literal
 
+import consts
+from filesystem.types import FileSystemName
+from pydantic import (
+    AliasChoices,
+    AnyUrl,
+    BaseModel,
+    ByteSize,
+    DirectoryPath,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
+from pydantic.networks import IPvAnyAddress
 from pydantic_settings import (
     BaseSettings,
     CliSettingsSource,
@@ -14,19 +25,6 @@ from pydantic_settings import (
     PydanticBaseSettingsSource,
     SettingsConfigDict,
 )
-from pydantic import (
-    AliasChoices,
-    AnyUrl,
-    BaseModel,
-    ByteSize,
-    DirectoryPath,
-    StringConstraints,
-    Field,
-    field_validator,
-    model_validator,
-)
-from pydantic.networks import IPvAnyAddress
-
 from utils.logs import LoggingFormats
 from utils.modeltypes import ReservedCapacityMode
 
@@ -107,21 +105,10 @@ class CSIDriverCmd(BaseModel):
         description="Directory to store Metadata files, required and should point to an existing path when running node plugin",
         default=None,
     )
-    internal_port: int | None = Field(
-        description="Listen port for gRPC server (used for internal communication only)",
-        default=None,
-        ge=0,
-        le=65535,
-    )
     internal_grpc_workers: int = Field(
         description="Number of workers for the internal gRPC server",
         default=10,
     )
-    internal_signature: str | None = Field(
-        description="Signature used for authentication of internal communication gRPC service",
-        default=None,
-    )
-    node_ds: str = Field(description="Name of the node DS used for node discovery")
     nodeid: str = Field(
         validation_alias=AliasChoices("nodeid", "NODE_ID"),
         description="ID/Name of the node that is running the driver",
@@ -201,6 +188,22 @@ class GCCmd(BaseModel):
     )
 
 
+class APICmd(BaseModel):
+    host: str = Field(
+        default="0.0.0.0",
+        description="Host address to bind the API server",
+    )
+    port: int = Field(
+        default=8080,
+        description="Port number to bind the API server",
+        gt=0,
+        le=65535,
+    )
+    workers: int = Field(
+        default=4, description="Number of uvicorn (ASGI) workers for API server"
+    )
+
+
 class RawFileCmd(
     BaseSettings, cli_parse_args=True, cli_exit_on_error=False, cli_kebab_case=True
 ):
@@ -247,12 +250,44 @@ class RawFileCmd(
         default=timedelta(hours=24),
         description="Google Analytics ping interval",
     )
+    node_ds: str | None = Field(
+        default=None, description="Name of the node DS used for node discovery"
+    )
     gc: CliSubCommand[GCCmd] = Field(
         description="Runs GC for all volumes in the node",
+    )
+    internal_signature: str | None = Field(
+        description="Signature used for authentication of internal communication gRPC service",
+        default=None,
+    )
+    internal_port: int | None = Field(
+        description="Listen port for gRPC server (used for internal communication only)",
+        default=None,
+        gt=0,
+        le=65535,
     )
     csi_driver: CliSubCommand[CSIDriverCmd] = Field(
         description="Starts CSI Driver",
     )
+    api: CliSubCommand[APICmd] = Field(
+        description="Starts API server",
+    )
+
+    @model_validator(mode="after")
+    def validate_ds(self):
+        if (self.api or self.csi_driver) and not self.node_ds:
+            raise ValueError(
+                "node_ds is required when running api server or csi_driver"
+            )
+        if (self.api or self.csi_driver) and not self.internal_signature:
+            raise ValueError(
+                "internal_signature is required when running api server or csi_driver"
+            )
+        if (self.api or self.csi_driver) and not self.internal_port:
+            raise ValueError(
+                "internal_port is required when running api server or csi_driver"
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_ga(self):

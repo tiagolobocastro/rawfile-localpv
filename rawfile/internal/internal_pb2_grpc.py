@@ -5,7 +5,7 @@ import warnings
 
 import internal_pb2 as internal__pb2
 
-GRPC_GENERATED_VERSION = '1.74.0'
+GRPC_GENERATED_VERSION = '1.80.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in internal_pb2_grpc.py depends on'
+        + ' but the generated code in internal_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -44,6 +44,21 @@ class InternalStub(object):
                 request_serializer=internal__pb2.GetRawFileRequest.SerializeToString,
                 response_deserializer=internal__pb2.GetRawFileResponse.FromString,
                 _registered_method=True)
+        self.GetPoolsStats = channel.unary_unary(
+                '/Internal/GetPoolsStats',
+                request_serializer=internal__pb2.GetPoolsStatsRequest.SerializeToString,
+                response_deserializer=internal__pb2.GetPoolsStatsResponse.FromString,
+                _registered_method=True)
+        self.GetVolumesStat = channel.unary_unary(
+                '/Internal/GetVolumesStat',
+                request_serializer=internal__pb2.GetVolumesStatRequest.SerializeToString,
+                response_deserializer=internal__pb2.GetVolumesStatResponse.FromString,
+                _registered_method=True)
+        self.GetNodeTasks = channel.unary_unary(
+                '/Internal/GetNodeTasks',
+                request_serializer=internal__pb2.GetNodeTasksRequest.SerializeToString,
+                response_deserializer=internal__pb2.GetNodeTasksResponse.FromString,
+                _registered_method=True)
 
 
 class InternalServicer(object):
@@ -57,7 +72,28 @@ class InternalServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetRawFile(self, request, context):
-        """Downlaods raw file data and metadata.
+        """Downloads raw file data and metadata.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetPoolsStats(self, request, context):
+        """Gets stats of pools in the node
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetVolumesStat(self, request, context):
+        """Gets stats of the volumes for a pool
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetNodeTasks(self, request, context):
+        """Get List of tasks with status
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -75,6 +111,21 @@ def add_InternalServicer_to_server(servicer, server):
                     servicer.GetRawFile,
                     request_deserializer=internal__pb2.GetRawFileRequest.FromString,
                     response_serializer=internal__pb2.GetRawFileResponse.SerializeToString,
+            ),
+            'GetPoolsStats': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPoolsStats,
+                    request_deserializer=internal__pb2.GetPoolsStatsRequest.FromString,
+                    response_serializer=internal__pb2.GetPoolsStatsResponse.SerializeToString,
+            ),
+            'GetVolumesStat': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetVolumesStat,
+                    request_deserializer=internal__pb2.GetVolumesStatRequest.FromString,
+                    response_serializer=internal__pb2.GetVolumesStatResponse.SerializeToString,
+            ),
+            'GetNodeTasks': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetNodeTasks,
+                    request_deserializer=internal__pb2.GetNodeTasksRequest.FromString,
+                    response_serializer=internal__pb2.GetNodeTasksResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -131,6 +182,87 @@ class Internal(object):
             '/Internal/GetRawFile',
             internal__pb2.GetRawFileRequest.SerializeToString,
             internal__pb2.GetRawFileResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetPoolsStats(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/Internal/GetPoolsStats',
+            internal__pb2.GetPoolsStatsRequest.SerializeToString,
+            internal__pb2.GetPoolsStatsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetVolumesStat(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/Internal/GetVolumesStat',
+            internal__pb2.GetVolumesStatRequest.SerializeToString,
+            internal__pb2.GetVolumesStatResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetNodeTasks(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/Internal/GetNodeTasks',
+            internal__pb2.GetNodeTasksRequest.SerializeToString,
+            internal__pb2.GetNodeTasksResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -1,11 +1,11 @@
-{{- if .Values.capabilities.resize.enabled }}
+{{- $cap := .Values.capabilities | default dict }}
+{{- if or ($cap.resize.enabled) ($cap.apiServer) }}
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: {{ include "rawfile-localpv.fullname" . }}-controller
 spec:
   replicas: 1
-  serviceName: {{ include "rawfile-localpv.fullname" . }}
   selector:
     matchLabels: &selectorLabels
       {{- include "rawfile-localpv.selectorLabels" . | nindent 6 }}
@@ -26,6 +26,64 @@ spec:
         - name: socket-dir
           emptyDir: {}
       containers:
+        {{- if $cap.apiServer.enabled }}
+        - name: api-server
+          image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.image "global" .Values.global "chartVersion" .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ default .Values.image.pullPolicy .Values.global.imagePullPolicy }}
+          args:
+            - api
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PROVISIONER_NAME
+              value: "{{ .Values.provisionerName }}"
+            - name: NAMESPACE
+              value: {{ .Release.Namespace }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel }}
+            - name: LOG_FORMAT
+              value: {{ .Values.logFormat }}
+            {{- if .Values.reservedCapacity }}
+            - name: RESERVED_CAPACITY
+              value: {{ .Values.reservedCapacity | toString | quote }}
+            {{- end }}
+            - name: GA_ENABLED
+              {{- if kindIs "bool" .Values.global.analytics.enabled }}
+              value: "{{ .Values.global.analytics.enabled }}"
+              {{- else }}
+              value: "{{ .Values.analytics.enabled }}"
+              {{- end }}
+            {{- if .Values.global.analytics.gaId }}
+            - name: GA_ID
+              value: {{ .Values.global.analytics.gaId | quote }}
+            {{- else if .Values.analytics.gaId }}
+            - name: GA_ID
+              value: {{ .Values.analytics.gaId | quote }}
+            {{- end }}
+            {{- if .Values.global.analytics.gaKey }}
+            - name: GA_KEY
+              value: {{ .Values.global.analytics.gaKey | quote }}
+            {{- else if .Values.analytics.gaKey }}
+            - name: GA_KEY
+              value: {{ .Values.analytics.gaKey | quote }}
+            {{- end }}
+            - name: NODE_DS
+              value: {{ include "rawfile-localpv.fullname" . }}-node
+            - name: INTERNAL_PORT
+              value: {{ .Values.node.internalGRPC.port | toString | quote }}
+            {{- if .Values.auth.enabled }}
+            - name: INTERNAL_SIGNATURE
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.auth.secretName }}
+                  name: {{ .Values.auth.secretName }}
+                  {{- else }}
+                  name: {{ include "rawfile-localpv.fullname" . }}-secrets
+                  {{- end }}
+                  key: internal-signature
+            {{- end }}
+        {{- end }}
+        {{- if $cap.resize.enabled }}
         - name: csi-driver
           image: {{ include "rawfile-localpv.common.image" (dict "imageRoot" .Values.image "global" .Values.global "chartVersion" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ default .Values.image.pullPolicy .Values.global.imagePullPolicy }}
@@ -76,12 +134,12 @@ spec:
             - name: GA_KEY
               value: {{ .Values.analytics.gaKey | quote }}
             {{- end }}
-            - name: CSI_DRIVER__INTERNAL_PORT
+            - name: INTERNAL_PORT
               value: {{ .Values.node.internalGRPC.port | toString | quote }}
-            - name: CSI_DRIVER__NODE_DS
+            - name: NODE_DS
               value: {{ include "rawfile-localpv.fullname" . }}-node
             {{- if .Values.auth.enabled }}
-            - name: CSI_DRIVER__INTERNAL_SIGNATURE
+            - name: INTERNAL_SIGNATURE
               valueFrom:
                 secretKeyRef:
                   {{- if .Values.auth.secretName }}
@@ -115,4 +173,5 @@ spec:
               mountPath: /csi
           resources:
             {{- include "rawfile-localpv.controller-external-resizer-resources" . | nindent 12 }}
+        {{- end }}
 {{- end }}

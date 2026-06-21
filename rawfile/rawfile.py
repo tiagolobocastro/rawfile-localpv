@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+import asyncio
 from concurrent import futures
 from concurrent.futures.thread import ThreadPoolExecutor
 from pathlib import Path
 import signal
+import api_server
 import bd2fs
-from config.model import CSIDriverCmd
+from config.model import RawFileCmd
 import grpc
 import rawfile_servicer
 from datetime import datetime
@@ -18,6 +20,7 @@ import consts
 from analytics.ga4 import run_ping, shutdown_event_worker, run_event_worker
 from orchestrator.k8s import node_ip_mapping
 from utils.rawfile import is_cow_supported
+from utils.remote import shutdown_grpc_channels
 from utils.volume_manager import manager as volume_manager
 from utils.devices import stat
 from setproctitle import setproctitle
@@ -65,7 +68,10 @@ def node_driver_preflight_checks(task_manager: task_manager.TaskManager):
     }
 
 
-def csi_driver(driver_config: CSIDriverCmd):
+def csi_driver(config: RawFileCmd):
+    driver_config = config.csi_driver
+    if not driver_config:
+        raise Exception("Should run from csi driver")
     setproctitle(
         f"RawFile LocalPV CSI Driver {driver_config.plugin_type} Plugin {driver_config.nodeid}"
     )
@@ -111,18 +117,16 @@ def csi_driver(driver_config: CSIDriverCmd):
             futures.ThreadPoolExecutor(
                 max_workers=int(driver_config.internal_grpc_workers)
             ),
-            interceptors=[SignatureInterceptor(driver_config.internal_signature)],
+            interceptors=[SignatureInterceptor(config.internal_signature)],
         )
         internal_pb2_grpc.add_InternalServicer_to_server(
-            InternalServicer(), internal_server
+            InternalServicer(task_manager=_task_manager), internal_server
         )
         internal_ip_str = driver_config.internal_ip
         internal_ip = ipaddress.ip_address(internal_ip_str)  # type: ignore
         if internal_ip.version == 6:
             internal_ip_str = f"[{internal_ip_str}]"
-        internal_server.add_insecure_port(
-            f"{internal_ip_str}:{driver_config.internal_port}"
-        )
+        internal_server.add_insecure_port(f"{internal_ip_str}:{config.internal_port}")
 
     # NOTE: Controller methods are exposed on node plugin too because we are using distributed-snapshotting
     # and Snapshotting methods are only available in Controller Service right now
@@ -168,6 +172,12 @@ def csi_driver(driver_config: CSIDriverCmd):
             start=start,
             end=end,
         )
+        logger.info("Stopping internal gRPC clients")
+        if (
+            config.csi_driver and config.csi_driver.plugin_type == "controller"
+        ) or config.api:
+            asyncio.run(shutdown_grpc_channels())
+        logger.info("Internal gRPC clients stopped")
 
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
@@ -193,4 +203,6 @@ if __name__ == "__main__":
     elif config.csi_driver:
         if config.csi_driver.plugin_type == "node":
             volume_manager.gc_all_volumes(True)
-        csi_driver(config.csi_driver)
+        csi_driver(config)
+    elif config.api:
+        api_server.start_server(config.api.host, config.api.workers, config.api.port)

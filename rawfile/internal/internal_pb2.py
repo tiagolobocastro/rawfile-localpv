@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import any_pb2 as google_dot_protobuf_dot_any__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0einternal.proto\x1a\x19google/protobuf/any.proto\";\n\x14\x45xpandRawFileRequest\x12\x11\n\tvolume_id\x18\x01 \x01(\t\x12\x10\n\x08new_size\x18\x02 \x01(\x03\"R\n\x15\x45xpandRawFileResponse\x12\x13\n\x0bis_attached\x18\x01 \x01(\x08\x12$\n\x06status\x18\x02 \x01(\x0e\x32\x14.ExpandRawFileStatus\"c\n\x11GetRawFileRequest\x12\x11\n\tvolume_id\x18\x01 \x01(\t\x12\x11\n\twith_data\x18\x02 \x01(\x08\x12\x18\n\x0bsnapshot_id\x18\x03 \x01(\tH\x00\x88\x01\x01\x42\x0e\n\x0c_snapshot_id\"\x9e\x01\n\x12GetRawFileResponse\x12\x33\n\x08metadata\x18\x01 \x03(\x0b\x32!.GetRawFileResponse.MetadataEntry\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\x1a\x45\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12#\n\x05value\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any:\x02\x38\x01*5\n\x13\x45xpandRawFileStatus\x12\x06\n\x02OK\x10\x00\x12\x16\n\x12RESOURCE_EXHAUSTED\x10\x01\x32\x81\x01\n\x08Internal\x12>\n\rExpandRawFile\x12\x15.ExpandRawFileRequest\x1a\x16.ExpandRawFileResponse\x12\x35\n\nGetRawFile\x12\x12.GetRawFileRequest\x1a\x13.GetRawFileResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0einternal.proto\x1a\x19google/protobuf/any.proto\";\n\x14\x45xpandRawFileRequest\x12\x11\n\tvolume_id\x18\x01 \x01(\t\x12\x10\n\x08new_size\x18\x02 \x01(\x03\"R\n\x15\x45xpandRawFileResponse\x12\x13\n\x0bis_attached\x18\x01 \x01(\x08\x12$\n\x06status\x18\x02 \x01(\x0e\x32\x14.ExpandRawFileStatus\"c\n\x11GetRawFileRequest\x12\x11\n\tvolume_id\x18\x01 \x01(\t\x12\x11\n\twith_data\x18\x02 \x01(\x08\x12\x18\n\x0bsnapshot_id\x18\x03 \x01(\tH\x00\x88\x01\x01\x42\x0e\n\x0c_snapshot_id\"\x9e\x01\n\x12GetRawFileResponse\x12\x33\n\x08metadata\x18\x01 \x03(\x0b\x32!.GetRawFileResponse.MetadataEntry\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\x1a\x45\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12#\n\x05value\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any:\x02\x38\x01\"\x16\n\x14GetPoolsStatsRequest\"\x86\x01\n\x08PoolStat\x12\x19\n\x11reserved_capacity\x18\x01 \x01(\t\x12\x0c\n\x04path\x18\x02 \x01(\t\x12\x1e\n\x16reserved_capacity_mode\x18\x03 \x01(\t\x12\x10\n\x08\x63\x61pacity\x18\x04 \x01(\x03\x12\x1f\n\x17\x63opy_on_write_supported\x18\x05 \x01(\x08\"\x82\x01\n\x15GetPoolsStatsResponse\x12\x30\n\x05stats\x18\x01 \x03(\x0b\x32!.GetPoolsStatsResponse.StatsEntry\x1a\x37\n\nStatsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x18\n\x05value\x18\x02 \x01(\x0b\x32\t.PoolStat:\x02\x38\x01\"\x92\x02\n\nVolumeStat\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04size\x18\x02 \x01(\x03\x12\x15\n\rcopy_on_write\x18\x03 \x01(\x08\x12\x16\n\x0ethin_provision\x18\x04 \x01(\x08\x12\r\n\x05ready\x18\x05 \x01(\x08\x12\x12\n\ndeleted_at\x18\x06 \x01(\x02\x12\x12\n\ncreated_at\x18\x07 \x01(\x02\x12\r\n\x05gc_at\x18\x08 \x01(\x02\x12\x14\n\x0cstorage_pool\x18\t \x01(\t\x12\x10\n\x08\x66reezefs\x18\n \x01(\x08\x12\x10\n\x08img_file\x18\x0b \x01(\t\x12\x15\n\rphysical_size\x18\x0c \x01(\x03\x12\x14\n\x0clogical_size\x18\r \x01(\x03\x12\x0c\n\x04used\x18\x0e \x01(\x03\"*\n\x15GetVolumesStatRequest\x12\x11\n\tpool_name\x18\x01 \x01(\t\"\x86\x01\n\x16GetVolumesStatResponse\x12\x31\n\x05stats\x18\x01 \x03(\x0b\x32\".GetVolumesStatResponse.StatsEntry\x1a\x39\n\nStatsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1a\n\x05value\x18\x02 \x01(\x0b\x32\x0b.VolumeStat:\x02\x38\x01\"\x15\n\x13GetNodeTasksRequest\"\xae\x01\n\x04Task\x12\x0c\n\x04task\x18\x01 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x02 \x03(\t\x12!\n\x06kwargs\x18\x03 \x03(\x0b\x32\x11.Task.KwargsEntry\x12\x13\n\x0bretry_count\x18\x04 \x01(\x03\x12\r\n\x05state\x18\x05 \x01(\t\x1a\x43\n\x0bKwargsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12#\n\x05value\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any:\x02\x38\x01\"|\n\x14GetNodeTasksResponse\x12/\n\x05tasks\x18\x01 \x03(\x0b\x32 .GetNodeTasksResponse.TasksEntry\x1a\x33\n\nTasksEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x14\n\x05value\x18\x02 \x01(\x0b\x32\x05.Task:\x02\x38\x01*5\n\x13\x45xpandRawFileStatus\x12\x06\n\x02OK\x10\x00\x12\x16\n\x12RESOURCE_EXHAUSTED\x10\x01\x32\xc1\x02\n\x08Internal\x12>\n\rExpandRawFile\x12\x15.ExpandRawFileRequest\x1a\x16.ExpandRawFileResponse\x12\x35\n\nGetRawFile\x12\x12.GetRawFileRequest\x1a\x13.GetRawFileResponse\x12>\n\rGetPoolsStats\x12\x15.GetPoolsStatsRequest\x1a\x16.GetPoolsStatsResponse\x12\x41\n\x0eGetVolumesStat\x12\x16.GetVolumesStatRequest\x1a\x17.GetVolumesStatResponse\x12;\n\x0cGetNodeTasks\x12\x14.GetNodeTasksRequest\x1a\x15.GetNodeTasksResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,8 +34,16 @@ if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_GETRAWFILERESPONSE_METADATAENTRY']._loaded_options = None
   _globals['_GETRAWFILERESPONSE_METADATAENTRY']._serialized_options = b'8\001'
-  _globals['_EXPANDRAWFILESTATUS']._serialized_start=452
-  _globals['_EXPANDRAWFILESTATUS']._serialized_end=505
+  _globals['_GETPOOLSSTATSRESPONSE_STATSENTRY']._loaded_options = None
+  _globals['_GETPOOLSSTATSRESPONSE_STATSENTRY']._serialized_options = b'8\001'
+  _globals['_GETVOLUMESSTATRESPONSE_STATSENTRY']._loaded_options = None
+  _globals['_GETVOLUMESSTATRESPONSE_STATSENTRY']._serialized_options = b'8\001'
+  _globals['_TASK_KWARGSENTRY']._loaded_options = None
+  _globals['_TASK_KWARGSENTRY']._serialized_options = b'8\001'
+  _globals['_GETNODETASKSRESPONSE_TASKSENTRY']._loaded_options = None
+  _globals['_GETNODETASKSRESPONSE_TASKSENTRY']._serialized_options = b'8\001'
+  _globals['_EXPANDRAWFILESTATUS']._serialized_start=1530
+  _globals['_EXPANDRAWFILESTATUS']._serialized_end=1583
   _globals['_EXPANDRAWFILEREQUEST']._serialized_start=45
   _globals['_EXPANDRAWFILEREQUEST']._serialized_end=104
   _globals['_EXPANDRAWFILERESPONSE']._serialized_start=106
@@ -46,6 +54,32 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_GETRAWFILERESPONSE']._serialized_end=450
   _globals['_GETRAWFILERESPONSE_METADATAENTRY']._serialized_start=381
   _globals['_GETRAWFILERESPONSE_METADATAENTRY']._serialized_end=450
-  _globals['_INTERNAL']._serialized_start=508
-  _globals['_INTERNAL']._serialized_end=637
+  _globals['_GETPOOLSSTATSREQUEST']._serialized_start=452
+  _globals['_GETPOOLSSTATSREQUEST']._serialized_end=474
+  _globals['_POOLSTAT']._serialized_start=477
+  _globals['_POOLSTAT']._serialized_end=611
+  _globals['_GETPOOLSSTATSRESPONSE']._serialized_start=614
+  _globals['_GETPOOLSSTATSRESPONSE']._serialized_end=744
+  _globals['_GETPOOLSSTATSRESPONSE_STATSENTRY']._serialized_start=689
+  _globals['_GETPOOLSSTATSRESPONSE_STATSENTRY']._serialized_end=744
+  _globals['_VOLUMESTAT']._serialized_start=747
+  _globals['_VOLUMESTAT']._serialized_end=1021
+  _globals['_GETVOLUMESSTATREQUEST']._serialized_start=1023
+  _globals['_GETVOLUMESSTATREQUEST']._serialized_end=1065
+  _globals['_GETVOLUMESSTATRESPONSE']._serialized_start=1068
+  _globals['_GETVOLUMESSTATRESPONSE']._serialized_end=1202
+  _globals['_GETVOLUMESSTATRESPONSE_STATSENTRY']._serialized_start=1145
+  _globals['_GETVOLUMESSTATRESPONSE_STATSENTRY']._serialized_end=1202
+  _globals['_GETNODETASKSREQUEST']._serialized_start=1204
+  _globals['_GETNODETASKSREQUEST']._serialized_end=1225
+  _globals['_TASK']._serialized_start=1228
+  _globals['_TASK']._serialized_end=1402
+  _globals['_TASK_KWARGSENTRY']._serialized_start=1335
+  _globals['_TASK_KWARGSENTRY']._serialized_end=1402
+  _globals['_GETNODETASKSRESPONSE']._serialized_start=1404
+  _globals['_GETNODETASKSRESPONSE']._serialized_end=1528
+  _globals['_GETNODETASKSRESPONSE_TASKSENTRY']._serialized_start=1477
+  _globals['_GETNODETASKSRESPONSE_TASKSENTRY']._serialized_end=1528
+  _globals['_INTERNAL']._serialized_start=1586
+  _globals['_INTERNAL']._serialized_end=1907
 # @@protoc_insertion_point(module_scope)

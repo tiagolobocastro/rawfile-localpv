@@ -147,12 +147,12 @@ def write_config_map(name: str, key: str, value: str, overwrite=False):
 
 class NodeIPMapping:
     def __init__(self):
-        if not config.csi_driver:
-            raise Exception("Should run from CSI Driver")
+        if not config.node_ds:
+            raise Exception("Nodes DaemonSet not defined")
         self.apps_v1 = k8s_client.AppsV1Api()
         self.core_v1 = k8s_client.CoreV1Api()
         ds = self.apps_v1.read_namespaced_daemon_set(
-            namespace=config.namespace, name=config.csi_driver.node_ds
+            namespace=config.namespace, name=config.node_ds
         )
         self.selector = ds.spec.selector.match_labels
         self.label_selector = ",".join(f"{k}={v}" for k, v in self.selector.items())
@@ -174,6 +174,9 @@ class NodeIPMapping:
             if pod.status.phase == "Running" and pod.status.pod_ip:
                 mapping[pod.spec.node_name] = pod.status.pod_ip
         self._mapping = mapping
+
+    def get_all_nodes(self):
+        return self._mapping
 
     def get_node_ip(self, node_name):
         ip = self._mapping.get(node_name, None)
