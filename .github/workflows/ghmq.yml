@@ -1,0 +1,29 @@
+name: Update Merge Queue Ruleset on Release Branch
+
+on:
+  push:
+    branches:
+      - develop
+    # No branch filter here — we filter in the job condition,
+    # because the `create` event doesn't support branch patterns
+
+jobs:
+  update-ruleset:
+    # Only run when a branch (not a tag) matching release/* is created
+    if: |
+      github.event.ref_type == 'branch' &&
+      startsWith(github.event.ref, 'release/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add branch to merge queue ruleset
+        env:
+          GH_TOKEN: ${{ secrets.RULESET_ADMIN_TOKEN }}    # PAT or GitHub App token — GITHUB_TOKEN lacks ruleset write access
+          RULESET_ID: ${{ vars.MERGE_QUEUE_RULESET_ID }}  # Store the ruleset numeric ID as a repo variable
+          BRANCH_NAME: ${{ github.event.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          .github/scripts/add.sh

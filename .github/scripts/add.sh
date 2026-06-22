@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# add-branch-to-ruleset.sh
+#
+# Appends a new release branch to the merge queue ruleset's ref include list.
+# Uses `gh api` for all GitHub API calls — no extra dependencies needed.
+#
+# Required env vars (set by the workflow):
+#   GH_TOKEN      - PAT or GitHub App token with Administration: write
+#   RULESET_ID    - Numeric ID of the merge queue ruleset
+#   BRANCH_NAME   - The newly created branch (e.g. release/1.4.0)
+#   REPO          - owner/repo (e.g. acme/my-service)
+
+set -euo pipefail
+
+REF_PATTERN="refs/heads/${BRANCH_NAME}"
+RULESET_PATH="/repos/${REPO}/rulesets/${RULESET_ID}"
+
+echo "Fetching ruleset ${RULESET_ID} ..."
+ruleset=$(gh api "${RULESET_PATH}")
+
+# Extract current include and exclude lists (default to empty JSON arrays if absent)
+include_list=$(echo "${ruleset}" | jq '.conditions.ref_name.include // []')
+exclude_list=$(echo "${ruleset}" | jq '.conditions.ref_name.exclude // []')
+
+# Idempotency check — don't add duplicates
+if echo "${include_list}" | jq -e --arg ref "${REF_PATTERN}" '. | index($ref) != null' > /dev/null; then
+  echo "Branch ${REF_PATTERN} is already in the ruleset. Nothing to do."
+  exit 0
+fi
+
+# Append the new branch to the include list
+updated_include=$(echo "${include_list}" | jq --arg ref "${REF_PATTERN}" '. + [$ref]')
+
+echo "Adding ${REF_PATTERN} to ruleset. New include list:"
+echo "${updated_include}" | jq .
+
+# PATCH the ruleset — read-before-write means we never blindly overwrite other fields
+gh api "${RULESET_PATH}" \
+  --method PATCH \
+  --field "conditions[ref_name][include]=$(echo "${updated_include}" | jq -c .)" \
+  --field "conditions[ref_name][exclude]=$(echo "${exclude_list}" | jq -c .)"
+
+echo "✅ Ruleset ${RULESET_ID} updated successfully."
+
