@@ -11,7 +11,7 @@
 #                    which is the full ref e.g. refs/heads/release/1.4.0
 #   REPO           - owner/repo (e.g. acme/my-service)
 
-set -exuo pipefail
+set -euo pipefail
 
 # github.event.ref is the full ref (e.g. refs/heads/release/1.4.0) — use as-is
 REF_PATTERN="${BRANCH_NAME}"
@@ -50,14 +50,14 @@ updated_include=$(echo "${include_list}" | jq --arg ref "${REF_PATTERN}" '. + [$
 echo "Adding ${REF_PATTERN} to ruleset. New include list:"
 echo "${updated_include}" | jq .
 
-# Use --input with a full JSON body to avoid any field encoding issues
-patch_body=$(jq -cn \
+# PUT requires the full ruleset object — read-before-write ensures we preserve all fields
+put_body=$(echo "${ruleset}" | jq \
   --argjson include "${updated_include}" \
   --argjson exclude "${exclude_list}" \
-  '{conditions: {ref_name: {include: $include, exclude: $exclude}}}')
+  '.conditions.ref_name.include = $include | .conditions.ref_name.exclude = $exclude')
 
-echo "${patch_body}" | gh api "${RULESET_PATH}" \
-  --method PATCH \
+echo "${put_body}" | gh api "${RULESET_PATH}" \
+  --method PUT \
   --input -
 
 echo "✅ Ruleset '${RULESET_NAME}' (${RULESET_ID}) updated successfully."
