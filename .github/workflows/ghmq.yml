@@ -22,7 +22,7 @@ jobs:
       - name: Add branch to merge queue ruleset
         env:
           GH_TOKEN: ${{ secrets.RULESET_ADMIN_TOKEN }}    # PAT or GitHub App token — GITHUB_TOKEN lacks ruleset write access
-          RULESET_ID: ${{ vars.MERGE_QUEUE_RULESET_ID }}  # Store the ruleset numeric ID as a repo variable
+          RULESET_NAME: ${{ vars.MERGE_QUEUE_RULESET_NAME }} # e.g. "MergeQueue" — resolved to ID at runtime
           BRANCH_NAME: ${{ github.event.ref }}
           REPO: ${{ github.repository }}
         run: |

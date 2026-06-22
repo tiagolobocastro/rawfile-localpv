@@ -1,21 +1,35 @@
 #!/usr/bin/env bash
 # add-branch-to-ruleset.sh
 #
-# Appends a new release branch to the merge queue ruleset's ref include list.
-# Uses `gh api` for all GitHub API calls — no extra dependencies needed.
+# Resolves the ruleset by name, then appends the new release branch
+# to its ref include list.
 #
 # Required env vars (set by the workflow):
-#   GH_TOKEN      - PAT or GitHub App token with Administration: write
-#   RULESET_ID    - Numeric ID of the merge queue ruleset
-#   BRANCH_NAME   - The newly created branch (e.g. release/1.4.0)
-#   REPO          - owner/repo (e.g. acme/my-service)
+#   GH_TOKEN       - PAT or GitHub App token with Administration: write
+#   RULESET_NAME   - Name of the merge queue ruleset (e.g. "MergeQueue")
+#   BRANCH_NAME    - The newly created branch (e.g. release/1.4.0)
+#   REPO           - owner/repo (e.g. acme/my-service)
 
 set -exuo pipefail
 
 REF_PATTERN="refs/heads/${BRANCH_NAME}"
+
+echo "Resolving ruleset ID for '${RULESET_NAME}' ..."
+RULESET_ID=$(
+  gh api "/repos/${REPO}/rulesets" \
+    | jq -r --arg name "${RULESET_NAME}" '.[] | select(.name == $name) | .id'
+)
+
+if [[ -z "${RULESET_ID}" ]]; then
+  echo "::error::No ruleset found with name '${RULESET_NAME}'"
+  exit 1
+fi
+
+echo "Resolved '${RULESET_NAME}' → ID ${RULESET_ID}"
+
 RULESET_PATH="/repos/${REPO}/rulesets/${RULESET_ID}"
 
-echo "Fetching ruleset ${RULESET_ID} ..."
+echo "Fetching ruleset ..."
 ruleset=$(gh api "${RULESET_PATH}")
 
 # Extract current include and exclude lists (default to empty JSON arrays if absent)
@@ -34,11 +48,9 @@ updated_include=$(echo "${include_list}" | jq --arg ref "${REF_PATTERN}" '. + [$
 echo "Adding ${REF_PATTERN} to ruleset. New include list:"
 echo "${updated_include}" | jq .
 
-# PATCH the ruleset — read-before-write means we never blindly overwrite other fields
 gh api "${RULESET_PATH}" \
   --method PATCH \
   --field "conditions[ref_name][include]=$(echo "${updated_include}" | jq -c .)" \
   --field "conditions[ref_name][exclude]=$(echo "${exclude_list}" | jq -c .)"
 
-echo "✅ Ruleset ${RULESET_ID} updated successfully."
-
+echo "✅ Ruleset '${RULESET_NAME}' (${RULESET_ID}) updated successfully."
