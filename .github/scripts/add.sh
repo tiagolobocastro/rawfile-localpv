@@ -8,10 +8,13 @@
 #   GH_TOKEN       - PAT or GitHub App token with Administration: write
 #   RULESET_NAME   - Name of the merge queue ruleset (e.g. "MergeQueue")
 #   BRANCH_NAME    - The newly created branch (e.g. release/1.4.0)
+#                    NOTE: github.event.ref is the bare branch name, no refs/heads/ prefix
 #   REPO           - owner/repo (e.g. acme/my-service)
 
 set -euo pipefail
 
+# github.event.ref is already a bare branch name (e.g. release/1.4.0),
+# so we add the refs/heads/ prefix here — just once
 REF_PATTERN="refs/heads/${BRANCH_NAME}"
 
 echo "Resolving ruleset ID for '${RULESET_NAME}' ..."
@@ -48,9 +51,14 @@ updated_include=$(echo "${include_list}" | jq --arg ref "${REF_PATTERN}" '. + [$
 echo "Adding ${REF_PATTERN} to ruleset. New include list:"
 echo "${updated_include}" | jq .
 
-gh api "${RULESET_PATH}" \
+# Use --input with a full JSON body to avoid any field encoding issues
+patch_body=$(jq -cn \
+  --argjson include "${updated_include}" \
+  --argjson exclude "${exclude_list}" \
+  '{conditions: {ref_name: {include: $include, exclude: $exclude}}}')
+
+echo "${patch_body}" | gh api "${RULESET_PATH}" \
   --method PATCH \
-  --field "conditions[ref_name][include]=$(echo "${updated_include}" | jq -c .)" \
-  --field "conditions[ref_name][exclude]=$(echo "${exclude_list}" | jq -c .)"
+  --input -
 
 echo "✅ Ruleset '${RULESET_NAME}' (${RULESET_ID}) updated successfully."
