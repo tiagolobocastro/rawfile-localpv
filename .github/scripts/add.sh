@@ -10,7 +10,7 @@
 #   BRANCH_NAME    - The newly created branch (e.g. release/1.4.0)
 #   REPO           - owner/repo (e.g. acme/my-service)
 
-set -exuo pipefail
+set -euo pipefail
 
 REF_PATTERN="refs/heads/${BRANCH_NAME}"
 
