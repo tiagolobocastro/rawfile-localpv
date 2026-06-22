@@ -8,13 +8,14 @@
 #   GH_TOKEN       - PAT or GitHub App token with Administration: write
 #   RULESET_NAME   - Name of the merge queue ruleset (e.g. "MergeQueue")
 #   BRANCH_NAME    - The newly created branch, as github.event.ref
-#                    which is the full ref e.g. refs/heads/release/1.4.0
+#                    on a `create` event this is a bare name e.g. release/1.4.0
 #   REPO           - owner/repo (e.g. acme/my-service)
 
 set -euo pipefail
 
-# github.event.ref is the full ref (e.g. refs/heads/release/1.4.0) — use as-is
-REF_PATTERN="${BRANCH_NAME}"
+# github.event.ref on a `create` event is a bare branch name (e.g. release/1.4.0)
+# GitHub ruleset patterns require the full refs/heads/ prefix
+REF_PATTERN="refs/heads/${BRANCH_NAME}"
 
 echo "Resolving ruleset ID for '${RULESET_NAME}' ..."
 RULESET_ID=$(
