@@ -62,6 +62,7 @@ jobs:
           charts_dir: ./deploy/helm
           # allows us to release again, only when the helm chart version is updated!
           skip_existing: true
+          skip_upload: 'true'
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           CR_RELEASE_NAME_TEMPLATE: "v{{ .Version }}"
