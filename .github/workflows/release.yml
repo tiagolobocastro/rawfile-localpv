@@ -38,33 +38,8 @@ jobs:
             .ci/gh-release-exists.sh $chartVersion
           fi
 
-  images:
-    uses: ./.github/workflows/images.yml
-    needs: needs-release
-    if: ${{ needs.needs-release.outputs.version != '' }}
-    secrets: inherit
-    with:
-      registry: ${{ needs.needs-release.outputs.registry }}
-      namespace: ${{ needs.needs-release.outputs.namespace }}
-
-  k8s:
-    permissions:
-      checks: write
-      pull-requests: write
-    uses: ./.github/workflows/k8s.yml
-    needs:
-      - needs-release
-      - images
-    secrets: inherit
-    with:
-      release: true
-      release-tag: v${{ needs.needs-release.outputs.version }}
-      registry: ${{ needs.needs-release.outputs.registry }}
-      namespace: ${{ needs.needs-release.outputs.namespace }}
-
   chart-release:
     uses: ./.github/workflows/helm-chart.yml
-    needs: k8s
     with:
       release: true
 
