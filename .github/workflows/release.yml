@@ -100,26 +100,9 @@ jobs:
     if: ${{ success() }}
     needs:
       - needs-release
-      - images
-      - k8s
       - chart-release
       - openapi-spec
     runs-on: ubuntu-latest
     steps:
       - name: Released
         run: exit 0
-
-  released-check:
-    permissions:
-      checks: write
-      pull-requests: write
-    uses: ./.github/workflows/k8s.yml
-    with:
-      release-check: true
-      release-tag: v${{ needs.needs-release.outputs.version }}
-      registry: ${{ needs.needs-release.outputs.registry }}
-      namespace: ${{ needs.needs-release.outputs.namespace }}
-      chart: "https://${{ github.repository_owner }}.github.io/rawfile-localpv/"
-    needs:
-      - release
-      - needs-release
